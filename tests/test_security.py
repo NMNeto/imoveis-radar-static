@@ -20,6 +20,7 @@ def test_security_headers_are_present():
         "Strict-Transport-Security: max-age=63072000; includeSubDomains; preload",
         "Cross-Origin-Opener-Policy: same-origin",
         "Cross-Origin-Resource-Policy: same-origin",
+        "Access-Control-Allow-Origin: https://imoveis-radar-static.pages.dev",
     ]
     for header in required:
         assert header in text, header
@@ -53,6 +54,11 @@ def test_image_function_has_no_wildcard_cors():
     text = (ROOT / "functions" / "api" / "image.js").read_text(encoding="utf-8")
     assert "Access-Control-Allow-Origin" not in text
     assert "Access-Control-Allow-Credentials" not in text
+    assert "__imoveis_cache" in text
+
+
+def test_has_404_page():
+    assert (ROOT / "public" / "404.html").exists()
 
 
 def test_no_inline_event_handlers_in_app():

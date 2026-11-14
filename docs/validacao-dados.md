@@ -127,7 +127,7 @@ Testes automatizados cobrem:
 python -m pytest -q
 ```
 
-Cobertura atual: **37 testes**, todos passando. Incluem:
+Cobertura atual: **38 testes**, todos passando. Incluem:
 
 - `test_text.py` — dinheiro brasileiro, acentos, normalização;
 - `test_csv_sources.py` — cabeçalho da Caixa, encoding, colunas, queda;

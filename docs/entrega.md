@@ -53,7 +53,7 @@
 
 ## 8. Testes automatizados
 
-- `tests/` — 37 testes.
+- `tests/` — 38 testes.
 - `python -m pytest -q` → todos passando.
 
 ## 9. Configuração Cloudflare Pages

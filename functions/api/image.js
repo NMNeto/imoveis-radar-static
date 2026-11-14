@@ -58,7 +58,10 @@ export async function onRequestGet(context) {
   }
 
   const cache = caches.default;
-  const cacheKey = new Request(target.toString(), { method: "GET" });
+  // Versão na chave invalida respostas antigas que ainda tinham CORS "*".
+  const cacheKeyUrl = new URL(target.toString());
+  cacheKeyUrl.searchParams.set("__imoveis_cache", "v2");
+  const cacheKey = new Request(cacheKeyUrl.toString(), { method: "GET" });
   try {
     const cached = await cache.match(cacheKey);
     if (cached) return cached;

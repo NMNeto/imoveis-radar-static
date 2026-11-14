@@ -20,7 +20,7 @@ publicado só recebe as mudanças após commit/push.
 | 7 | XSS/`innerHTML` | `onerror` inline e URLs interpoladas sem escape | Handlers inline removidos; URLs escapadas; `safeUrl` com `new URL`; imagens só HTTPS |
 | 8 | Recursos externos/SRI | Scripts/estilos são locais; Google Forms/OSM são iframe/imagens | Sem SRI aplicável a iframe; CSP restringe origens; tudo em HTTPS |
 
-Resultado: **37 testes passando**, preview local com CSP ativa sem erros de
+Resultado: **38 testes passando**, preview local com CSP ativa sem erros de
 console, mapa, imagens, popups, configurações e formulário de sugestões
 funcionando.
 
@@ -44,6 +44,7 @@ Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
 Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
 Cross-Origin-Opener-Policy: same-origin
 Cross-Origin-Resource-Policy: same-origin
+Access-Control-Allow-Origin: https://imoveis-radar-static.pages.dev
 X-Permitted-Cross-Domain-Policies: none
 ```
 
@@ -127,6 +128,12 @@ allowlist de hosts, a validação de HTTPS/porta 443, a checagem de
 `Content-Type: image/*`, o limite de 20 MB e a validação do host final após
 redirect continuam ativos. Não há `Access-Control-Allow-Credentials`.
 
+A chave do Cache API passou a incluir `__imoveis_cache=v2`, invalidando
+respostas antigas que ainda carregavam `Access-Control-Allow-Origin: *`.
+Para os assets estáticos, o `_headers` fixa
+`Access-Control-Allow-Origin: https://imoveis-radar-static.pages.dev` em vez
+do `*` padrão do Pages.
+
 ## 6. Redirects abertos
 
 - Não existe `public/_redirects`.
@@ -168,7 +175,7 @@ Correções:
   vulnerabilities found**.
 - Desenvolvimento (`requirements-dev.txt`): `pytest 8.4.2` apresentava
   `PYSEC-2026-1845`; atualizado para `pytest>=9.0.3,<10`. Nova auditoria:
-  **No known vulnerabilities found**. Os 37 testes passam com pytest 9.
+  **No known vulnerabilities found**. Os 38 testes passam com pytest 9.
 - Scripts e CSS são locais (`public/static/*`), então SRI não é necessário
   para eles. O iframe do Google Forms não suporta SRI; a proteção é a CSP
   `frame-src` restrita. Os tiles do OSM são imagens HTTPS; não há script
@@ -200,7 +207,27 @@ reais de `public/_headers`:
 - fallback de imagem quebrada troca para `static/placeholder.svg`;
 - **0 erros de console, 0 violações de CSP**.
 
-## 10. Riscos residuais e recomendações
+## 10. Validação no domínio publicado
+
+Após o primeiro deploy das correções, foi verificado em
+`https://imoveis-radar-static.pages.dev/`:
+
+- CSP, HSTS, XFO, nosniff, Referrer-Policy, Permissions-Policy, COOP e CORP
+  presentes;
+- Function de imagem com resposta nova sem `Access-Control-Allow-Origin: *`;
+- respostas de imagem antigas em cache ainda tinham `*`; por isso a chave do
+  Cache API foi versionada para `v2`;
+- assets estáticos do Pages vinham com `Access-Control-Allow-Origin: *`
+  padrão; o `_headers` agora fixa a origem de produção;
+- caminhos `.map` retornavam o `index.html` com 200 (soft-404), mas **sem
+  conteúdo de source map**; foi adicionada uma página `404.html` para que o
+  Pages responda 404 de verdade quando essa configuração estiver ativa.
+
+O site continuou funcionando no teste de produção: 17.876 imóveis, 60
+cartões, mapa, imagens, modal de sugestões e configurações, sem erros de
+console ou violações de CSP.
+
+## 11. Riscos residuais e recomendações
 
 1. **Google Forms** — as respostas são privadas na conta Google do
    proprietário, mas isso depende das configurações do formulário. Confirme
@@ -225,12 +252,13 @@ curl -sSI https://imoveis-radar-static.pages.dev/ | grep -Ei \
   'content-security-policy|x-frame-options|strict-transport-security|cross-origin'
 ```
 
-## 11. Arquivos alterados nesta auditoria
+## 12. Arquivos alterados nesta auditoria
 
 | Arquivo | Alteração |
 | --- | --- |
-| `public/_headers` | CSP e cabeçalhos de segurança completos |
-| `functions/api/image.js` | removido CORS `*`; adicionado CORP |
+| `public/_headers` | CSP e cabeçalhos de segurança completos; CORS restrito |
+| `public/404.html` | página 404 real (evita soft-404 em caminhos `.map`) |
+| `functions/api/image.js` | removido CORS `*`; CORP; chave de cache versionada |
 | `public/static/app.js` | `safeUrl`/HTTPS, escape de URLs, fim dos `onerror` inline, fallback global |
 | `public/static/vendor/leaflet.js` | removido `sourceMappingURL` |
 | `public/static/vendor/leaflet.markercluster.js` | removido `sourceMappingURL` |
@@ -240,7 +268,7 @@ curl -sSI https://imoveis-radar-static.pages.dev/ | grep -Ei \
 | `tests/test_security.py` | testes de headers/CSP/maps/CORS/handlers/segredos |
 | `docs/validacao-dados.md`, `docs/entrega.md`, `README.md` | atualização de contagens e documentação |
 
-## 12. Conclusão
+## 13. Conclusão
 
 As vulnerabilidades apontadas foram tratadas ou documentadas. O preview local
 funciona com CSP restritiva, sem `unsafe-inline`/`unsafe-eval`, sem CORS
