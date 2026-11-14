@@ -283,6 +283,22 @@ dialog::backdrop { background: rgba(10, 18, 25, .45); }
 
 dialog.notice-dialog { width: min(640px, 95vw); }
 dialog.feedback-dialog { width: min(760px, 95vw); }
+dialog.help-dialog { width: min(860px, 95vw); }
+.help-form { padding: 22px; max-height: 88vh; overflow: auto; }
+.help-form h3 { margin: 20px 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.help-form h3:first-of-type { margin-top: 10px; }
+.help-form p, .help-form li { font-size: 13px; line-height: 1.55; color: #39434c; }
+.help-form ul { margin: 6px 0 14px 20px; padding: 0; }
+.help-form li { margin: 5px 0; }
+.help-form code { background: #eef2f4; padding: 1px 4px; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: var(--ink); }
+.help-form pre { margin: 8px 0 14px; padding: 10px; overflow-x: auto; background: #f6f8f9; border: 1px solid var(--line); border-radius: 8px; font-size: 12px; line-height: 1.5; }
+.help-form pre code { background: transparent; padding: 0; }
+.help-table-wrap { overflow-x: auto; }
+.help-table { width: 100%; border-collapse: collapse; margin: 6px 0 14px; font-size: 12.5px; }
+.help-table th, .help-table td { padding: 6px 8px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
+.help-table th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+.help-table td:first-child { white-space: nowrap; font-weight: 600; }
+.help-note { background: #fff8e6; border-left: 3px solid var(--warn); border-radius: 6px; padding: 8px 10px; margin: 10px 0 14px; }
 .feedback-form { padding: 18px; display: flex; flex-direction: column; gap: 10px; }
 .feedback-hint { font-size: 12px; margin: 0 0 4px; }
 .feedback-frame { width: 100%; height: min(68vh, 700px); border: 0; border-radius: 8px; background: #fff; }
@@ -292,7 +308,10 @@ dialog.feedback-dialog { width: min(760px, 95vw); }
 .notice-form p { margin: 0 0 12px; font-size: 14px; line-height: 1.55; color: #39434c; }
 .notice-form p:last-of-type { margin-bottom: 0; }
 .notice-form strong { color: var(--ink); }
-.notice-decline-hint { margin-top: 14px !important; font-size: 12px !important; color: var(--muted) !important; }
+.notice-consent { display: flex; align-items: flex-start; gap: 8px; margin: 14px 0 0; font-size: 13px; line-height: 1.45; color: #39434c; cursor: pointer; }
+.notice-consent input { margin-top: 3px; flex: 0 0 auto; }
+.notice-decline-hint { margin-top: 10px !important; font-size: 12px !important; color: var(--muted) !important; }
+.link-button { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
 .notice-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 
 .config-form { padding: 18px; overflow: auto; max-height: 88vh; }
@@ -376,4 +395,6 @@ textarea {
   .notice-form { padding: 18px; }
   .feedback-form { padding: 14px; }
   .feedback-frame { height: 66vh; }
+  .help-form { padding: 16px; }
+  .help-table { font-size: 12px; }
 }

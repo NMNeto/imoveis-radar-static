@@ -19,6 +19,12 @@
   armazena as respostas; elas ficam na conta do responsável pelo formulário.
   O Google pode usar cookies próprios; consulte a política de privacidade do
   Google.
+- **Google Tag Manager (GTM-PQ5NNHX6):** o container só é carregado depois do
+  consentimento explícito no aviso de primeira visita (checkbox de análise,
+  medição e publicidade). Sem consentimento, nenhuma requisição é feita ao
+  Google. O container pode ativar Google Analytics, Google Ads/DoubleClick e
+  pixels de parceiros e definir cookies. A escolha pode ser alterada pelo
+  botão **Aviso**.
 - **Mapa:** tiles do OpenStreetMap; geocodificação Nominatim/Photon no
   servidor, não no navegador.
 
@@ -39,15 +45,22 @@ Título: **Antes de continuar**
 > tomar qualquer decisão. Ao clicar em “Ver oferta”, você sai deste site e
 > passa a seguir as políticas do portal de origem.
 >
-> **Cookies e armazenamento:** não usamos cookies próprios de publicidade,
-> análise ou rastreamento. Usamos o armazenamento local do navegador apenas
-> para lembrar seus ajustes de configuração e para não mostrar este aviso
-> novamente. A Cloudflare pode usar cookies estritamente necessários de
-> segurança da plataforma.
+> **Cookies e armazenamento:** não usamos cookies próprios de publicidade.
+> Com o seu consentimento, carregamos o Google Tag Manager, que pode ativar
+> tags de análise, medição e publicidade do Google e de parceiros e definir
+> cookies. Você pode recusar; o site funciona normalmente. Também usamos
+> armazenamento local para preferências e para este aviso. A Cloudflare pode
+> usar cookies de segurança. [Saiba mais](https://policies.google.com/technologies/cookies).
+
+Checkbox:
+
+> **Aceito o uso de cookies de análise, medição e publicidade do Google e de
+> parceiros de medição para ajudar a melhorar o site. (Opcional)**
 
 Botões:
 
-- **Entendi e continuar** — fecha o aviso e grava a marca no `localStorage`.
+- **Entendi e continuar** — fecha o aviso, grava a marca no `localStorage` e,
+  se o checkbox estiver marcado, grava o consentimento do GTM.
 - **Não concordo** — redireciona para `https://www.google.com/` usando
   `location.replace`, sem deixar o aviso no histórico. O aviso não é marcado
   como lido; se a pessoa voltar, ele aparece de novo.
@@ -95,7 +108,25 @@ Texto do rodapé do aviso:
 - A chave `imoveis-radar-static:notice:v1` no `localStorage` controla se o
   aviso já foi lido. Para testar novamente, apague essa chave no DevTools.
 
-## 5. Sugestões
+## 5. Google Tag Manager (GTM-PQ5NNHX6)
+
+- O snippet foi adaptado para CSP: a inicialização (`dataLayer`, `gtag`) está
+  em `public/static/gtm-loader.js`, um arquivo local, sem `unsafe-inline`.
+- O script externo `https://www.googletagmanager.com/gtm.js?id=GTM-PQ5NNHX6`
+  só é injetado se a chave
+  `imoveis-radar-static:analytics-consent:v1` estiver como `granted`.
+- O checkbox do aviso grava essa chave. “Entendi e continuar” sem o checkbox
+  mantém o GTM desligado. “Não concordo” também grava `denied` e sai para o
+  Google.
+- Para revogar depois: **Aviso** → desmarcar o checkbox → **Entendi e
+  continuar**. A página recarrega e o GTM deixa de ser carregado.
+- O container pode carregar Google Analytics, Google Ads/DoubleClick e pixels
+  de parceiros; a CSP libera os hosts necessários. Revise as tags dentro do
+  GTM, pois elas podem mudar fora deste repositório.
+- O site não inclui o `<noscript>` do GTM, para não carregar o container sem
+  consentimento.
+
+## 6. Sugestões
 
 O botão **Sugestões** abre o Google Form
 <https://forms.gle/HnciJsM5Xzto8ATd6> em um modal. A URL de incorporação e o

@@ -20,7 +20,7 @@ publicado só recebe as mudanças após commit/push.
 | 7 | XSS/`innerHTML` | `onerror` inline e URLs interpoladas sem escape | Handlers inline removidos; URLs escapadas; `safeUrl` com `new URL`; imagens só HTTPS |
 | 8 | Recursos externos/SRI | Scripts/estilos são locais; Google Forms/OSM são iframe/imagens | Sem SRI aplicável a iframe; CSP restringe origens; tudo em HTTPS |
 
-Resultado: **38 testes passando**, preview local com CSP ativa sem erros de
+Resultado: **41 testes passando**, preview local com CSP ativa sem erros de
 console, mapa, imagens, popups, configurações e formulário de sugestões
 funcionando.
 
@@ -31,12 +31,18 @@ Arquivo alterado: `public/_headers`.
 Adicionado ao bloco `/*`:
 
 ```text
-Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self';
+Content-Security-Policy: default-src 'self';
+  script-src 'self' https://www.googletagmanager.com
+    (e hosts Google Analytics/Ads/DoubleClick/Meta usados pelo container GTM);
+  style-src 'self';
   img-src 'self' data: https://venda-imoveis.caixa.gov.br
-    https://*.tile.openstreetmap.org; font-src 'self'; connect-src 'self';
-  frame-src https://docs.google.com https://forms.gle; object-src 'none';
-  base-uri 'self'; form-action 'self'; frame-ancestors 'self';
-  upgrade-insecure-requests
+    https://*.tile.openstreetmap.org (e hosts Google/Ads/Meta do GTM);
+  font-src 'self';
+  connect-src 'self' (e hosts Google/Ads/Meta do GTM);
+  frame-src https://docs.google.com https://forms.gle
+    (e hosts Google/Ads/Meta do GTM);
+  object-src 'none'; base-uri 'self'; form-action 'self';
+  frame-ancestors 'self'; upgrade-insecure-requests
 X-Frame-Options: SAMEORIGIN
 X-Content-Type-Options: nosniff
 Referrer-Policy: strict-origin-when-cross-origin
@@ -50,15 +56,18 @@ X-Permitted-Cross-Domain-Policies: none
 
 Decisões:
 
-- **`script-src 'self'`** — não há scripts inline. Os antigos `onerror`
-  inline foram removidos (ver seção 7).
+- **`script-src 'self'` + GTM** — não há scripts inline. Os antigos `onerror`
+  inline foram removidos (ver seção 7). O único script externo é o GTM,
+  carregado por `public/static/gtm-loader.js` **somente após consentimento**.
+  A inicialização (`dataLayer`/`gtag`) ficou em arquivo local para não exigir
+  `unsafe-inline`.
 - **`style-src 'self'`** — o CSS é local e o Leaflet usa CSSOM
-  (`element.style`), não `<style>` inline. Testado com mapa, clusters e
-  popups; não houve violação de CSP.
+  (`element.style`), não `<style>` inline. Testado com mapa, clusters,
+  popups e GTM; não houve violação de CSP.
 - **`img-src`** — permite `self` (imagens/proxy), `data:` (fallback do
   Leaflet), o host das fotos da Caixa e os subdomínios de tiles do OSM.
-- **`frame-src`** — permite o iframe do Google Forms (`docs.google.com`) e o
-  link curto (`forms.gle`).
+- **`frame-src`** — permite o iframe do Google Forms (`docs.google.com`), o
+  link curto (`forms.gle`) e os frames usados por tags do GTM.
 - **`frame-ancestors 'self'` + XFO SAMEORIGIN** — o site não pode ser
   enquadrado por terceiros. SAMEORIGIN foi mantido em vez de DENY por
   compatibilidade com previews, sem perda prática.
@@ -175,11 +184,13 @@ Correções:
   vulnerabilities found**.
 - Desenvolvimento (`requirements-dev.txt`): `pytest 8.4.2` apresentava
   `PYSEC-2026-1845`; atualizado para `pytest>=9.0.3,<10`. Nova auditoria:
-  **No known vulnerabilities found**. Os 38 testes passam com pytest 9.
-- Scripts e CSS são locais (`public/static/*`), então SRI não é necessário
-  para eles. O iframe do Google Forms não suporta SRI; a proteção é a CSP
-  `frame-src` restrita. Os tiles do OSM são imagens HTTPS; não há script
-  externo.
+  **No known vulnerabilities found**. Os 41 testes passam com pytest 9.
+- Scripts e CSS próprios são locais (`public/static/*`), então SRI não é
+  necessário para eles. O iframe do Google Forms não suporta SRI; a proteção
+  é a CSP `frame-src` restrita. Os tiles do OSM são imagens HTTPS.
+- O **GTM é um script externo** e não oferece SRI estável (o conteúdo do
+  container muda no Google). A proteção é: CSP com hosts allowlistados,
+  consentimento explícito, revisão das tags no GTM e `Loader` local.
 - Todas as imagens do site são HTTPS ou same-origin; `imageSrc` rejeita
   `http://`.
 
@@ -220,6 +231,9 @@ Após o deploy final, foi verificado em
 - assets estáticos (`/`, `/static/app.js`, JSON) com CORS restrito;
 - caminhos `.map` agora retornam **404** (não há source map exposto);
 - caminhos inexistentes retornam **404** via `404.html`;
+- GTM: sem consentimento, **nenhuma requisição** ao Google; com o checkbox
+  marcado, o `gtm.js` é carregado e o GA4 envia `page_view`; ao revogar, a
+  página recarrega sem GTM;
 - site funcionando: 17.876 imóveis, 60 cartões, 12 tiles do mapa, imagens,
   modal de sugestões, configurações, sem erros de console ou violações de
   CSP.
@@ -245,6 +259,12 @@ proxy deve ser feita com `GET`.
 5. **Proxy de imagem** — a allowlist e o cache reduzem abuso, mas não há
    rate limit por IP. Se necessário, adicione Turnstile/rate limit na
    Function.
+6. **GTM** — o container `GTM-PQ5NNHX6` é controlado no Google e pode mudar
+   tags/cookies sem alteração neste repositório. Revise periodicamente as
+   tags; o consentimento gate não substitui a revisão de privacidade. A CSP
+   foi ampliada para os hosts de Analytics/Ads/Meta usados pelo container.
+7. **CORS fixo no domínio** — se um domínio personalizado substituir o
+   `pages.dev`, atualize `Access-Control-Allow-Origin` em `public/_headers`.
 6. **Produção** — as correções estão locais; após o push, valide os headers
    no domínio publicado com:
 
@@ -257,7 +277,9 @@ curl -sSI https://imoveis-radar-static.pages.dev/ | grep -Ei \
 
 | Arquivo | Alteração |
 | --- | --- |
-| `public/_headers` | CSP e cabeçalhos de segurança completos; CORS restrito |
+| `public/_headers` | CSP e cabeçalhos de segurança completos; CORS restrito; hosts do GTM |
+| `public/static/gtm-loader.js` | carrega GTM-PQ5NNHX6 só após consentimento |
+| `public/index.html`, `public/404.html` | loader do GTM em todas as páginas |
 | `public/404.html` | página 404 real (evita soft-404 em caminhos `.map`) |
 | `functions/api/image.js` | removido CORS `*`; CORP; chave de cache versionada |
 | `public/static/app.js` | `safeUrl`/HTTPS, escape de URLs, fim dos `onerror` inline, fallback global |

@@ -223,6 +223,12 @@ Para outra frequência, edite o `cron`. O GitHub Actions sempre usa UTC.
   privadas na conta do responsável. Há fallback para abrir o formulário em
   nova aba. A URL fica em `public/static/config.js`
   (`feedbackUrl`/`feedbackEmbedUrl`).
+- **Ajuda** — guia no próprio site explicando filtros, ordenação, fórmulas de
+  desconto/lucro, imóveis sem avaliação/preço, configurações, mapa e
+  privacidade.
+- **Google Tag Manager** — container `GTM-PQ5NNHX6` carregado apenas após
+  consentimento no aviso; a inicialização fica em
+  `public/static/gtm-loader.js`, sem `unsafe-inline`.
 - **Geocodificação** roda no Python, com cache e limite de requisições;
   os botões de geocodificação do site apenas orientam/abrem o workflow.
 - **Configurações** no navegador são locais; use Exportar + `importar_config.py`

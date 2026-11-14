@@ -12,6 +12,9 @@
 - `public/_headers`, `public/_routes.json`, `public/robots.txt`
 - Modal **Sugestões** integrado ao Google Forms
   (`https://forms.gle/HnciJsM5Xzto8ATd6`), com fallback para nova aba.
+- Modal **Ajuda** com guia de filtros, fórmulas, imóveis sem avaliação/preço,
+  configurações, mapa e privacidade.
+- **GTM-PQ5NNHX6** carregado somente após consentimento no aviso.
 
 ## 3. Novo diretório isolado
 
@@ -53,7 +56,7 @@
 
 ## 8. Testes automatizados
 
-- `tests/` — 38 testes.
+- `tests/` — 41 testes.
 - `python -m pytest -q` → todos passando.
 
 ## 9. Configuração Cloudflare Pages

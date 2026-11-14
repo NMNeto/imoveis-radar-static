@@ -57,6 +57,10 @@ Checklist:
       não reabre ao recarregar; o botão “Aviso” reabre.
 - [ ] “Sugestões” abre o Google Form no modal e o fallback “Abrir no Google
       Forms” funciona.
+- [ ] “Ajuda” abre o guia completo; o atalho “Ver o guia de ajuda” funciona
+      dentro do aviso de primeira visita.
+- [ ] O GTM não faz requisições antes do consentimento; ao marcar o checkbox
+      e aceitar, o `gtm.js` carrega; ao revogar, deixa de carregar.
 - [ ] “Configurações” abre e salva ajustes locais.
 - [ ] Console do navegador sem erros.
 - [ ] Layout responsivo em 390 px e 1440 px.

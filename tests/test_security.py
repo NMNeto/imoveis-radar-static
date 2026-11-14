@@ -35,6 +35,7 @@ def test_csp_is_restrictive_and_has_no_unsafe_eval():
     )
     assert "default-src 'self'" in csp
     assert "script-src 'self'" in csp
+    assert "https://www.googletagmanager.com" in csp
     assert "object-src 'none'" in csp
     assert "base-uri 'self'" in csp
     assert "frame-ancestors 'self'" in csp
@@ -59,6 +60,16 @@ def test_image_function_has_no_wildcard_cors():
 
 def test_has_404_page():
     assert (ROOT / "public" / "404.html").exists()
+
+
+def test_gtm_is_consent_gated_and_initialized_locally():
+    loader = (ROOT / "public" / "static" / "gtm-loader.js").read_text(encoding="utf-8")
+    assert "GTM-PQ5NNHX6" in loader
+    assert "imoveis-radar-static:analytics-consent:v1" in loader
+    assert "__loadGTM" in loader
+    for page in ("index.html", "404.html"):
+        html = (ROOT / "public" / page).read_text(encoding="utf-8")
+        assert "/static/gtm-loader.js" in html
 
 
 def test_no_inline_event_handlers_in_app():

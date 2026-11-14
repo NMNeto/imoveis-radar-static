@@ -6,6 +6,7 @@ const PAGE_SIZE = 60;
 const IMAGE_PLACEHOLDER = "static/placeholder.svg";
 const STORAGE_KEY = "imoveis-radar-static:overrides:v1";
 const NOTICE_KEY = "imoveis-radar-static:notice:v1";
+const ANALYTICS_KEY = "imoveis-radar-static:analytics-consent:v1";
 
 const DEFAULTS = {
   uf: "all",
@@ -286,10 +287,39 @@ function noticeSeen() {
 
 function openNotice() {
   const dialog = $("#notice-dialog");
+  const analytics = $("#notice-analytics");
+  if (analytics) analytics.checked = analyticsConsent();
   if (dialog && !dialog.open) dialog.showModal();
 }
 
+function analyticsConsent() {
+  try {
+    return window.localStorage.getItem(ANALYTICS_KEY) === "granted";
+  } catch (error) {
+    return false;
+  }
+}
+
+function setAnalyticsConsent(granted) {
+  const previous = analyticsConsent();
+  try {
+    window.localStorage.setItem(ANALYTICS_KEY, granted ? "granted" : "denied");
+  } catch (error) {
+    // Sem localStorage, o GTM não é carregado.
+  }
+  if (granted) {
+    window.__loadGTM?.();
+    return;
+  }
+  if (previous && window.__gtmLoaded) {
+    // O GTM não pode ser descarregado sem recarregar a página.
+    window.location.reload();
+  }
+}
+
 function acceptNotice() {
+  const analytics = $("#notice-analytics");
+  setAnalyticsConsent(Boolean(analytics?.checked));
   try {
     window.localStorage.setItem(NOTICE_KEY, "1");
   } catch (error) {
@@ -302,11 +332,21 @@ function acceptNotice() {
 function declineNotice() {
   // Redirecionamento simples e garantido. window.close() não é confiável
   // em abas abertas pelo usuário.
+  try {
+    window.localStorage.setItem(ANALYTICS_KEY, "denied");
+  } catch (error) {
+    // Sem localStorage, nada a limpar.
+  }
   window.location.replace("https://www.google.com/");
 }
 
 function showNoticeIfNeeded() {
   if (!noticeSeen()) openNotice();
+}
+
+function openHelp() {
+  const dialog = $("#help-dialog");
+  if (dialog && !dialog.open) dialog.showModal();
 }
 
 function openFeedback() {
@@ -1671,6 +1711,9 @@ function bindEvents() {
   $("#btn-notice").addEventListener("click", openNotice);
   $("#btn-notice-close").addEventListener("click", acceptNotice);
   $("#btn-notice-decline").addEventListener("click", declineNotice);
+  $("#btn-notice-help").addEventListener("click", openHelp);
+  $("#btn-help").addEventListener("click", openHelp);
+  $("#btn-help-close").addEventListener("click", () => $("#help-dialog").close());
   $("#btn-feedback").addEventListener("click", (event) => {
     if (event.metaKey || event.ctrlKey || event.shiftKey) return;
     event.preventDefault();
@@ -1694,6 +1737,7 @@ async function init() {
   initCombos();
   bindEvents();
   showNoticeIfNeeded();
+  window.__loadGTM?.();
   try {
     await loadMeta();
     await fetchProperties();

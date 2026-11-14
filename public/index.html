@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
+  <script src="/static/gtm-loader.js"></script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Busca Imóveis</title>
@@ -27,6 +28,7 @@
       <a id="btn-download" class="btn" href="data/busca_imoveis.csv" download>Baixar CSV</a>
       <button id="btn-share" class="btn" type="button">Compartilhar</button>
       <button id="btn-config" class="btn" type="button">Configurações</button>
+      <button id="btn-help" class="btn" type="button">Ajuda</button>
     </div>
   </header>
 
@@ -166,6 +168,159 @@
     </form>
   </dialog>
 
+  <dialog id="help-dialog" class="help-dialog" aria-labelledby="help-title">
+    <div class="help-form">
+      <div class="dialog-head">
+        <h2 id="help-title">Ajuda — como usar o Busca Imóveis</h2>
+        <button id="btn-help-close" class="btn small" type="button">Fechar</button>
+      </div>
+
+      <p class="muted">
+        Este site é uma ferramenta independente de consulta. Ele reúne anúncios
+        públicos da Caixa, Banco do Brasil, Santander e Itaú para ajudar você a
+        localizar oportunidades. O site não vende imóveis e não substitui a
+        análise da fonte original.
+      </p>
+
+      <h3>Filtros</h3>
+      <div class="help-table-wrap">
+        <table class="help-table">
+          <thead>
+            <tr><th>Filtro</th><th>O que faz</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>UF / Cidade / Bairro</td><td>Restringe a localização. As opções mudam conforme os outros filtros.</td></tr>
+            <tr><td>Fonte</td><td>Mostra só Caixa, Banco do Brasil, Santander ou Itaú.</td></tr>
+            <tr><td>Preço máx.</td><td>Limita o preço pedido. Vazio ou 0 significa sem limite.</td></tr>
+            <tr><td>Desconto mín.</td><td>Mostra imóveis com desconto calculado maior ou igual ao valor. Imóveis sem avaliação só aparecem se o mínimo for 0.</td></tr>
+            <tr><td>Lucro mín.</td><td>Mostra imóveis com lucro estimado maior ou igual ao valor. Imóveis sem avaliação só aparecem se o mínimo for 0.</td></tr>
+            <tr><td>Financiamento</td><td>Filtra por “Sim”, “Não” ou todos.</td></tr>
+            <tr><td>Modalidade</td><td>Filtra por leilão, venda direta, venda online etc.</td></tr>
+            <tr><td>Buscar</td><td>Pesquisa em ID, UF, cidade, bairro, endereço, descrição e modalidade.</td></tr>
+            <tr><td>Aplicar exclusões</td><td>Respeita as listas de IDs e locais excluídos nas Configurações.</td></tr>
+            <tr><td>Limpar</td><td>Volta todos os filtros para o padrão.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Ordenação</h3>
+      <ul>
+        <li><strong>Maior desconto:</strong> desconto percentual em relação ao valor de avaliação/ajustado.</li>
+        <li><strong>Maior lucro R$:</strong> lucro estimado em reais.</li>
+        <li><strong>Maior lucro %:</strong> lucro estimado como porcentagem do valor de avaliação/ajustado.</li>
+        <li><strong>Menor/maior preço:</strong> preço pedido pela fonte.</li>
+        <li><strong>Endereço:</strong> ordem alfabética por UF, cidade, bairro e endereço.</li>
+      </ul>
+
+      <h3>Como calculamos o desconto e o lucro</h3>
+      <p>
+        O cálculo usa o <strong>valor de avaliação</strong> da fonte ou, quando
+        você usa <strong>Ajustar valor</strong>, o valor de venda aproximado
+        informado por você. O preço é o valor pedido no anúncio.
+      </p>
+      <pre><code>desconto   = (valor_ajustado - preco) / valor_ajustado * 100
+
+fator      = 1 se a modalidade for Venda Online ou Venda Direta Online
+             senão fator_preco (padrão 1,05 = prêmio de 5%)
+
+custo_fixo = custo_fixo (modo fixo)
+             ou valor_ajustado * custo_fixo / 100 (modo percentual)
+
+lucro      = (valor_ajustado - valor_ajustado * taxa_venda - custo_fixo)
+             - preco * fator
+
+lucro_pct  = lucro / valor_ajustado * 100</code></pre>
+      <p><strong>Exemplo:</strong> valor de avaliação R$ 200.000, preço R$ 120.000,
+        modalidade Venda Online, taxa de venda 6% e dívidas fixas de R$ 40.000:</p>
+      <pre><code>desconto = (200.000 - 120.000) / 200.000 * 100 = 40%
+lucro    = (200.000 - 12.000 - 40.000) - 120.000 = 28.000
+lucro %  = 28.000 / 200.000 * 100 = 14%</code></pre>
+      <p class="help-note">
+        O lucro é uma <strong>estimativa para triagem</strong>, não uma garantia.
+        Custos de cartório, reforma, condomínio, IPTU, ocupação, dívidas e
+        riscos do leilão precisam ser confirmados no edital e na fonte original.
+      </p>
+
+      <h3>Imóveis sem avaliação, sem preço ou com proposta</h3>
+      <ul>
+        <li><strong>Sem valor de avaliação (comum no BB):</strong> desconto,
+          lucro e lucro % ficam <code>null</code> (não são zero). Se você definir
+          desconto ou lucro mínimo maior que zero, esses imóveis saem do filtro.</li>
+        <li><strong>“Faça sua oferta” (BB) ou “Sob consulta” (Itaú):</strong> o
+          preço é 0 no dataset. Sem preço e/ou sem avaliação não há como calcular
+          desconto/lucro; o cartão continua visível para consulta.</li>
+        <li><strong>Como simular:</strong> use <strong>Ajustar valor</strong> no
+          cartão para informar um valor de venda aproximado. O cartão ganha o
+          selo <strong>ajustado</strong> e os cálculos são refeitos neste navegador.</li>
+        <li>Não inventamos valores: campos ausentes permanecem nulos e são
+          mostrados como “sem avaliação” ou “sob consulta”.</li>
+      </ul>
+
+      <h3>Configurações</h3>
+      <p>
+        A caixa <strong>Configurações</strong> altera as premissas e as listas
+        usadas no cálculo e na exibição. As mudanças ficam salvas
+        <strong>neste navegador</strong>; use <strong>Exportar</strong> para
+        baixar <code>config-local.json</code> e aplicar ao repositório com
+        <code>scripts/importar_config.py</code>.
+      </p>
+      <ul>
+        <li><strong>Taxa Corretagem Venda (%):</strong> percentual descontado do
+          valor de avaliação no cálculo do lucro.</li>
+        <li><strong>Dívidas (Condomínio e IPTU):</strong> valor fixo em reais ou
+          percentual do valor de avaliação.</li>
+        <li><strong>Taxa Leilão (%):</strong> prêmio aplicado ao preço em
+          modalidades que não são venda online. 5% vira fator 1,05.</li>
+        <li><strong>IDs excluídos:</strong> um ID por linha.</li>
+        <li><strong>Locais excluídos:</strong> <code>Cidade,Bairro,Endereço</code>
+          por linha. Use <code>all</code> como curinga. Um <code>*</code> no fim
+          do endereço faz correspondência por prefixo.</li>
+        <li><strong>Valores de venda ajustados:</strong> <code>ID,Valor</code>
+          por linha, para substituir o valor de avaliação em um imóvel.</li>
+      </ul>
+      <p class="help-note">
+        Os exemplos iniciais (<code>00000000</code>,
+        <code>CIDADE EXEMPLO,BAIRRO EXEMPLO,all</code> e
+        <code>00000000,350000</code>) não correspondem a imóveis reais; servem
+        apenas para mostrar o formato. Substitua ou apague as linhas para usar
+        o filtro.
+      </p>
+
+      <h3>Mapa e localização</h3>
+      <ul>
+        <li>Os pontos são <strong>aproximados</strong>. A precisão pode ser
+          bairro, cidade ou estado; o endereço exato aparece no cartão.</li>
+        <li>Os bairros novos são geocodificados durante a atualização
+          automática, com cache e limites de uso.</li>
+        <li><strong>Filtrar pelo mapa</strong> usa a área visível;
+          <strong>Limpar área</strong> remove esse filtro.</li>
+      </ul>
+
+      <h3>Fontes, atualização e limites</h3>
+      <ul>
+        <li>Os dados vêm de anúncios públicos da Caixa, BB, Santander e Itaú.
+          A atualização é automática (diária) e também pode ser executada
+          manualmente no GitHub Actions.</li>
+        <li>Preços, disponibilidade, condições, imagens e links podem mudar a
+          qualquer momento. <strong>Confirme sempre na fonte original</strong>
+          antes de tomar qualquer decisão.</li>
+        <li>Se uma fonte falha, a versão anterior dela é preservada; o site não
+          inventa nem remove dados por causa de uma falha de coleta.</li>
+        <li>Este site não é afiliado à Caixa, BB, Santander ou Itaú.</li>
+      </ul>
+
+      <h3>Privacidade e cookies</h3>
+      <p>
+        Não usamos cookies próprios de publicidade. Com o seu consentimento,
+        carregamos o Google Tag Manager, que pode ativar tags de análise,
+        medição e publicidade do Google e definir cookies. Você pode aceitar ou
+        recusar no aviso de primeira visita e alterar a escolha pelo botão
+        <strong>Aviso</strong>. Também usamos armazenamento local para
+        preferências e para não repetir o aviso.
+      </p>
+    </div>
+  </dialog>
+
   <dialog id="feedback-dialog" class="feedback-dialog" aria-labelledby="feedback-title">
     <div class="feedback-form">
       <div class="dialog-head">
@@ -202,13 +357,19 @@
       </p>
       <p>
         <strong>Cookies e armazenamento:</strong> não usamos cookies próprios de
-        publicidade, análise ou rastreamento. Usamos o armazenamento local do
-        navegador apenas para lembrar seus ajustes de configuração e para não
-        mostrar este aviso novamente. A Cloudflare pode usar cookies
-        estritamente necessários de segurança da plataforma.
+        publicidade. Com o seu consentimento, carregamos o Google Tag Manager,
+        que pode ativar tags de análise, medição e publicidade do Google e
+        definir cookies. Você pode recusar; o site funciona normalmente.
+        Também usamos armazenamento local para preferências e para este aviso.
+        A Cloudflare pode usar cookies de segurança. <a href="https://policies.google.com/technologies/cookies" target="_blank" rel="noopener noreferrer">Saiba mais</a>.
       </p>
+      <label class="notice-consent">
+        <input id="notice-analytics" type="checkbox">
+        <span>Aceito o uso de cookies de análise, medição e publicidade do Google e de parceiros de medição para ajudar a melhorar o site. (Opcional)</span>
+      </label>
       <p class="notice-decline-hint">
         Se você não concordar com estes termos, use “Não concordo” para sair.
+        Precisa de ajuda? <button id="btn-notice-help" class="link-button" type="button">Ver o guia de ajuda</button>.
       </p>
       <div class="notice-actions">
         <button id="btn-notice-decline" class="btn" type="button" title="Sair do site e ir para o Google">Não concordo</button>

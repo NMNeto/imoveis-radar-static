@@ -114,6 +114,10 @@ A estrutura visual continua a mesma.
   marca de leitura.
 - “Sugestões”: abre o Google Form em um modal, carrega o título e as perguntas
   corretas e oferece “Abrir no Google Forms” como fallback.
+- “Ajuda”: abre o guia com filtros, fórmulas, imóveis sem avaliação/preço,
+  configurações, mapa e privacidade; o atalho dentro do aviso também funciona.
+- GTM: nenhuma requisição ao Google sem consentimento; com o checkbox marcado,
+  `gtm.js` e o GA4 carregam; ao revogar, a página recarrega sem GTM.
 - Console sem erros em desktop e mobile.
 
 ## 6. Conclusão
