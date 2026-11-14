@@ -97,6 +97,18 @@ input, select {
   min-height: 34px;
 }
 
+input[type="checkbox"] {
+  width: 16px;
+  min-width: 16px;
+  max-width: 16px;
+  height: 16px;
+  min-height: 16px;
+  padding: 0;
+  margin: 0;
+  flex: 0 0 auto;
+  accent-color: var(--accent);
+}
+
 input:focus, select:focus, textarea:focus {
   outline: 2px solid rgba(14, 138, 112, .35);
   border-color: var(--accent-2);
@@ -309,7 +321,8 @@ dialog.help-dialog { width: min(860px, 95vw); }
 .notice-form p:last-of-type { margin-bottom: 0; }
 .notice-form strong { color: var(--ink); }
 .notice-consent { display: flex; align-items: flex-start; gap: 8px; margin: 14px 0 0; font-size: 13px; line-height: 1.45; color: #39434c; cursor: pointer; }
-.notice-consent input { margin-top: 3px; flex: 0 0 auto; }
+.notice-consent input { margin-top: 3px; flex: 0 0 16px; }
+.notice-consent span { flex: 1 1 auto; min-width: 0; }
 .notice-decline-hint { margin-top: 10px !important; font-size: 12px !important; color: var(--muted) !important; }
 .link-button { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
 .notice-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
