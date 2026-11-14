@@ -26,7 +26,11 @@ UA = (
 )
 
 API_PROPS = "https://api.shi.santander.com.br/v1/real_estate_auctions/real_estate_properties"
-API_KEY = "d9ffca1a-71af-48e4-bece-8bc852455cd7"
+# Chave pública usada pelo front-end do portal (não é um segredo do usuário).
+# Pode ser sobrescrita por SANTANDER_API_KEY sem editar o código.
+API_KEY = os.environ.get(
+    "SANTANDER_API_KEY", "d9ffca1a-71af-48e4-bece-8bc852455cd7"
+)
 API_PAGE_SIZE = 1000
 
 DATE_PREFIX = os.environ.get("SOURCE_DATE_PREFIX", datetime.now().strftime("%Y.%m.%d_"))

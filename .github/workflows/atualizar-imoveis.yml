@@ -19,6 +19,10 @@ on:
         description: "Limite opcional de imóveis por coletor (teste)"
         required: false
         default: ""
+      no_geocode:
+        description: "Não consultar Nominatim/Photon nesta execução"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -72,10 +76,12 @@ jobs:
           DRY_RUN: ${{ inputs.dry_run || 'false' }}
           SKIP_COLLECT: ${{ inputs.skip_collect || 'false' }}
           MAX_IMOVEIS: ${{ inputs.max_imoveis || '' }}
+          NO_GEOCODE: ${{ inputs.no_geocode || 'false' }}
         run: |
           ARGS="--json"
           if [ "$DRY_RUN" = "true" ]; then ARGS="$ARGS --dry-run"; fi
           if [ "$SKIP_COLLECT" = "true" ]; then ARGS="$ARGS --skip-collect"; fi
+          if [ "$NO_GEOCODE" = "true" ]; then ARGS="$ARGS --no-geocode"; fi
           if [ -n "$MAX_IMOVEIS" ]; then ARGS="$ARGS --max-imoveis $MAX_IMOVEIS"; fi
           python scripts/atualizar_imoveis.py $ARGS | tee /tmp/resumo-atualizacao.json
 

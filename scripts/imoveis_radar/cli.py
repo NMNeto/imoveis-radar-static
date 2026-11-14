@@ -62,9 +62,13 @@ logger = logging.getLogger(__name__)
 class ConfigBundle:
     def __init__(self, paths: Paths):
         self.settings = load_settings(paths.config_file)
-        self.market_values = normalize_market_values(
-            load_market_values(paths.market_values_file)
-        )
+        market_path = paths.market_values_file
+        if not market_path.exists():
+            # Compatibilidade com o nome legado usado pelo projeto original.
+            legacy = paths.config / "market_values.csv"
+            if legacy.exists():
+                market_path = legacy
+        self.market_values = normalize_market_values(load_market_values(market_path))
         exclude_ids, exclude_locations = load_exclusions(
             paths.exclude_ids_file, paths.exclude_locations_file
         )

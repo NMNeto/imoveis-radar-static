@@ -23,16 +23,8 @@ const ALLOWED_HOSTS = new Set([
 const MAX_BYTES = 20 * 1024 * 1024;
 const CACHE_SECONDS = 604800;
 
-const REFERERS = {
-  "shi.santander.com.br": "https://www.santanderimoveis.com.br/",
-  "www.seuimovelbb.com.br": "https://www.seuimovelbb.com.br/",
-  "www.itau.com.br": "https://www.itau.com.br/imoveis-itau/",
-  "cdn.frazaoleiloes.com.br": "https://www.itau.com.br/",
-  "imagens.portalzuk.com.br": "https://www.itau.com.br/",
-  "cdn1.megaleiloes.com.br": "https://www.itau.com.br/",
-  "cdn-biasi.blueintra.com": "https://www.itau.com.br/",
-  "armazupleilaovipprd.blob.core.windows.net": "https://www.itau.com.br/",
-};
+// O proxy original não envia Referer; alguns CDNs rejeitam Referer de outro
+// domínio. Mantemos o mesmo comportamento do dev_server.py.
 
 function errorResponse(status, message) {
   return new Response(JSON.stringify({ ok: false, error: message }), {
@@ -84,7 +76,6 @@ export async function onRequestGet(context) {
           "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36",
         Accept: "image/avif,image/webp,image/png,image/jpeg,image/*",
         "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
-        Referer: REFERERS[target.hostname] || `${target.protocol}//${target.hostname}/`,
       },
       cf: { cacheEverything: true, cacheTtl: CACHE_SECONDS },
     });
