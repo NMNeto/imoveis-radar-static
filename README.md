@@ -189,6 +189,7 @@ Para outra frequência, edite o `cron`. O GitHub Actions sempre usa UTC.
 ## Documentação
 
 - [Checklist de entrega](docs/entrega.md)
+- [Aviso de primeira visita e privacidade](docs/aviso-e-privacidade.md)
 - [Relatório técnico do site original](docs/relatorio-tecnico-original.md)
 - [Arquitetura e decisões](docs/arquitetura.md)
 - [Dados, campos e atualização](docs/dados-e-atualizacao.md)
@@ -204,8 +205,13 @@ Para outra frequência, edite o `cron`. O GitHub Actions sempre usa UTC.
 
 - **Sem backend de aplicação.** O Pages serve arquivos estáticos; a única
   função é o proxy de imagens.
-- **“Atualizar agora”** abre o workflow no GitHub Actions em vez de disparar
-  uma atualização diretamente, para não expor um token no navegador.
+- **Atualização** é feita pelo cron do GitHub Actions ou manualmente em
+  Actions → Atualizar imóveis. O botão “Atualizar agora” foi removido do site
+  público para não expor um token no navegador.
+- **Aviso de primeira visita** — o site informa que é apenas consulta, que os
+  dados devem ser confirmados nas fontes originais e que não há cookies
+  próprios de análise/publicidade; usa-se `localStorage` para preferências e
+  para não repetir o aviso.
 - **Geocodificação** roda no Python, com cache e limite de requisições;
   os botões de geocodificação do site apenas orientam/abrem o workflow.
 - **Configurações** no navegador são locais; use Exportar + `importar_config.py`

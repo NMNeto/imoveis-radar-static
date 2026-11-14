@@ -22,7 +22,13 @@
 | `docs/screenshots/static-desktop.png` | estático, 1440×1000 |
 | `docs/screenshots/original-mobile.png` | original, 390×844 |
 | `docs/screenshots/static-mobile.png` | estático, 390×844 |
+| `docs/screenshots/static-notice-desktop.png` | aviso de primeira visita, desktop |
+| `docs/screenshots/static-notice-mobile.png` | aviso de primeira visita, mobile |
 | `docs/screenshots/diff-desktop.png` | diferença amplificada |
+
+Para comparar o layout, o aviso de primeira visita foi dispensado no
+screenshot estático (o botão “Entendi e continuar” foi clicado). O aviso em si
+está documentado nas imagens `static-notice-*`.
 
 ## 3. Comparação de conteúdo (DOM)
 
@@ -47,19 +53,21 @@ Após a correção, os cartões ficaram na mesma ordem.
 
 | Viewport | Pixels diferentes | Percentual | Região |
 | --- | --- | --- | --- |
-| Desktop 1440×1000 | 2.765 | **0,192%** | texto de “Atualizado” no topo + tiles do mapa |
-| Mobile 390×844 | 6.015 | **1,827%** | apenas o texto de “Atualizado” no topo |
+| Desktop 1440×1000 | 6.023 | **0,418%** | botão “Aviso” vs. “Atualizar agora”, status e tiles do mapa |
+| Mobile 390×844 | 5.774 | **1,754%** | botão “Aviso” vs. “Atualizar agora” + status no topo |
 
-A diferença de mobile é dominada pelo texto de status de atualização: a cópia
-temporária do original não tinha `data/last_update.json`, então exibia
-“Ainda não atualizado”; o estático exibe a data do último dado publicado. Em
-produção o original também exibe uma data, portanto essa diferença é
-circunstancial.
+A diferença de mobile é dominada pelo cabeçalho: o original ainda tem o botão
+“Atualizar agora”, enquanto o site público o removeu e colocou “Aviso” no
+lugar, além do texto de status de atualização. A cópia temporária do original
+não tinha `data/last_update.json`, então exibia “Ainda não atualizado”; o
+estático exibe a data do último dado publicado. Em produção o original também
+exibe uma data, portanto essa parte é circunstancial.
 
-No desktop, além do status, há pequenas diferenças de renderização de tiles
+No desktop, além do cabeçalho, há pequenas diferenças de renderização de tiles
 do OpenStreetMap e de clusters do mapa (timing de carregamento). Não há
 diferença estrutural de layout, tipografia, cores, espaçamento, cartões,
-menu ou responsividade.
+menu ou responsividade. A remoção do botão de atualização e o aviso de primeira
+visita são mudanças intencionais solicitadas.
 
 ## 5. Testes funcionais executados
 
@@ -76,12 +84,20 @@ menu ou responsividade.
 - “Configurações”: abre, mostra 171 IDs, 141 locais e 153 valores, salva
   overrides no navegador, exporta `config-local.json`.
 - “Ajustar valor” e “Excluir”: recalculam desconto/lucro e refletem na lista.
-- “Atualizar agora”: abre o workflow do GitHub Actions.
+- “Aviso”: reabre o aviso de consulta independente e armazenamento local
+  (o botão “Atualizar agora” foi removido por segurança, já que o site é
+  público).
+- Primeira visita: o aviso abre automaticamente; “Entendi e continuar” fecha
+  e grava a marca no `localStorage`; recarregar não reabre; o botão “Aviso”
+  reabre quando quiser.
 - Console sem erros em desktop e mobile.
 
 ## 6. Conclusão
 
-O site estático é visualmente equivalente ao original: **99,81%** dos pixels
-idênticos no desktop e **98,17%** no mobile, com as diferenças explicadas por
-status de atualização e timing de tiles. O conteúdo, a ordem dos cartões, os
-filtros, o mapa e as interações foram preservados.
+O site estático é visualmente equivalente ao original: **99,58%** dos pixels
+idênticos no desktop e **98,25%** no mobile. As diferenças restantes são
+intencionais ou circunstanciais: o botão “Atualizar agora” foi removido e
+substituído por “Aviso”, o texto de status de atualização difere e os tiles do
+mapa carregam em timing diferente. O conteúdo, a ordem dos cartões, os filtros,
+o mapa e as interações foram preservados. O aviso de primeira visita está
+documentado separadamente e não altera o layout depois de dispensado.

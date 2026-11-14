@@ -72,8 +72,11 @@
 
 - [comparacao-visual.md](comparacao-visual.md)
 - Screenshots em `docs/screenshots/`.
-- 99,81% de pixels idênticos no desktop; 98,17% no mobile (diferenças:
-  status de atualização e timing de tiles).
+- 99,58% de pixels idênticos no desktop; 98,25% no mobile (diferenças:
+  botão “Atualizar agora” removido/substituído por “Aviso”, status de
+  atualização e timing de tiles).
+- Aviso de primeira visita documentado em
+  [aviso-e-privacidade.md](aviso-e-privacidade.md), com screenshots próprios.
 
 ## 12. Relatório de validação dos dados
 

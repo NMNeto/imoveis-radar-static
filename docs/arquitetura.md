@@ -145,7 +145,9 @@ Configuração pública para a caixa de Configurações: `settings`,
   “Ajustar valor” e “Excluir”.
 - Imagens de BB/Santander/Itaú passam por `/api/image`; Caixa continua
   hot-linked.
-- `config.js` centraliza `imageProxy` e `actionsUrl` sem build step.
+- `config.js` centraliza `imageProxy` sem build step.
+- O aviso de primeira visita usa `localStorage` apenas para lembrar que o
+  usuário já o leu; não há cookies próprios de análise/publicidade.
 
 ## 6. Isolamento do projeto original
 

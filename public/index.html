@@ -22,7 +22,7 @@
     </div>
     <div class="actions">
       <span id="update-status" class="status"></span>
-      <button id="btn-update" class="btn primary" type="button">Atualizar agora</button>
+      <button id="btn-notice" class="btn" type="button">Aviso</button>
       <a id="btn-download" class="btn" href="data/busca_imoveis.csv" download>Baixar CSV</a>
       <button id="btn-share" class="btn" type="button">Compartilhar</button>
       <button id="btn-config" class="btn" type="button">Configurações</button>
@@ -158,6 +158,35 @@
         <button id="btn-config-save" class="btn primary" value="default" type="submit">Salvar neste navegador</button>
       </div>
     </form>
+  </dialog>
+
+  <dialog id="notice-dialog" class="notice-dialog" aria-labelledby="notice-title">
+    <div class="notice-form">
+      <h2 id="notice-title">Antes de continuar</h2>
+      <p>
+        Este site é uma ferramenta independente de <strong>consulta</strong> e
+        <strong>não vende imóveis</strong>. Reunimos anúncios públicos da Caixa,
+        Banco do Brasil, Santander e Itaú para ajudar você a localizar
+        oportunidades.
+      </p>
+      <p>
+        Preços, disponibilidade, condições, imagens e links podem mudar a
+        qualquer momento. <strong>Confirme sempre as informações no site oficial
+        da fonte</strong> antes de tomar qualquer decisão. Ao clicar em
+        “Ver oferta”, você sai deste site e passa a seguir as políticas do
+        portal de origem.
+      </p>
+      <p>
+        <strong>Cookies e armazenamento:</strong> não usamos cookies próprios de
+        publicidade, análise ou rastreamento. Usamos o armazenamento local do
+        navegador apenas para lembrar seus ajustes de configuração e para não
+        mostrar este aviso novamente. A Cloudflare pode usar cookies
+        estritamente necessários de segurança da plataforma.
+      </p>
+      <div class="notice-actions">
+        <button id="btn-notice-close" class="btn primary" type="button">Entendi e continuar</button>
+      </div>
+    </div>
   </dialog>
 
   <div id="toast" class="toast"></div>

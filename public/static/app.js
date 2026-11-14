@@ -5,6 +5,7 @@ const MAX_ITEMS_VISIVEIS = 5000;
 const PAGE_SIZE = 60;
 const IMAGE_PLACEHOLDER = "static/placeholder.svg";
 const STORAGE_KEY = "imoveis-radar-static:overrides:v1";
+const NOTICE_KEY = "imoveis-radar-static:notice:v1";
 
 const DEFAULTS = {
   uf: "all",
@@ -266,6 +267,33 @@ function showToast(message, isError = false) {
   toast.classList.add("show");
   clearTimeout(showToast.timer);
   showToast.timer = setTimeout(() => toast.classList.remove("show"), 3500);
+}
+
+function noticeSeen() {
+  try {
+    return window.localStorage.getItem(NOTICE_KEY) === "1";
+  } catch (error) {
+    return false;
+  }
+}
+
+function openNotice() {
+  const dialog = $("#notice-dialog");
+  if (dialog && !dialog.open) dialog.showModal();
+}
+
+function acceptNotice() {
+  try {
+    window.localStorage.setItem(NOTICE_KEY, "1");
+  } catch (error) {
+    // Sem localStorage, o aviso volta na próxima visita.
+  }
+  const dialog = $("#notice-dialog");
+  if (dialog) dialog.close();
+}
+
+function showNoticeIfNeeded() {
+  if (!noticeSeen()) openNotice();
 }
 
 async function getJSON(url) {
@@ -1257,22 +1285,10 @@ function updateUpdateStatus(status) {
   }
 }
 
-function startUpdate() {
-  const url = window.IMOVEIS_CONFIG?.actionsUrl;
-  if (url) {
-    window.open(url, "_blank", "noopener");
-    showToast("A atualização roda no GitHub Actions. Acompanhe a execução na nova aba.");
-  } else {
-    showToast("A atualização é executada pelo workflow do GitHub Actions.", true);
-  }
-}
-
 function startGeocode(scope = "filtered") {
-  const url = window.IMOVEIS_CONFIG?.actionsUrl;
   showToast(
     "A geocodificação é feita pelo script Python durante a atualização automática."
   );
-  if (url) window.open(url, "_blank", "noopener");
 }
 
 /* --------------------------------------------------------------------------
@@ -1602,7 +1618,8 @@ function bindEvents() {
     if (button.dataset.action === "adjust") adjustValue(button.dataset.id);
     if (button.dataset.action === "exclude") excludeItem(button.dataset.id);
   });
-  $("#btn-update").addEventListener("click", startUpdate);
+  $("#btn-notice").addEventListener("click", openNotice);
+  $("#btn-notice-close").addEventListener("click", acceptNotice);
   $("#btn-share").addEventListener("click", copyShareLink);
   $("#btn-geocode").addEventListener("click", () => startGeocode("filtered"));
   $("#btn-geocode-all").addEventListener("click", () => startGeocode("all"));
@@ -1619,6 +1636,7 @@ async function init() {
   initMap();
   initCombos();
   bindEvents();
+  showNoticeIfNeeded();
   try {
     await loadMeta();
     await fetchProperties();

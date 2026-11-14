@@ -182,7 +182,7 @@ O CSV da Caixa tem ~8,6 MB e 23.782 linhas; o dataset combinado tem cerca de
 | --- | --- | --- |
 | Filtros/facetas/ordenação | `/api/properties`, `/api/facets` | portadas para JS, sobre os JSON carregados |
 | Paginação | `limit`/`offset` da API | corte local de 5.000 + “Carregar mais” |
-| Atualizar agora | job no Flask | abre o workflow do GitHub Actions |
+| Atualizar agora | job no Flask | botão removido no site público; atualização via Actions (cron/manual) |
 | Baixar CSV | `/api/csv` | `data/busca_imoveis.csv` gerado pelo Python |
 | Proxy de imagens | `/api/image` | Pages Function `functions/api/image.js` |
 | Ajustar valor | `POST /api/market-value` | override em localStorage + exportação |

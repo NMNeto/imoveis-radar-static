@@ -53,6 +53,8 @@ Checklist:
 - [ ] Imagens de Santander/Itaú/BB aparecem via `/api/image`.
 - [ ] “Baixar CSV” baixa `data/busca_imoveis.csv`.
 - [ ] “Compartilhar” copia a URL com filtros.
+- [ ] O aviso de primeira visita aparece, fecha em “Entendi e continuar” e
+      não reabre ao recarregar; o botão “Aviso” reabre.
 - [ ] “Configurações” abre e salva ajustes locais.
 - [ ] Console do navegador sem erros.
 - [ ] Layout responsivo em 390 px e 1440 px.
