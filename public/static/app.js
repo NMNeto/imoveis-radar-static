@@ -292,6 +292,18 @@ function acceptNotice() {
   if (dialog) dialog.close();
 }
 
+function declineNotice() {
+  // window.close() só é permitido para abas abertas por script. Se o
+  // navegador bloquear, o fallback leva ao Google.
+  const canClose = window.opener && !window.opener.closed;
+  if (canClose) {
+    window.close();
+    setTimeout(() => window.location.replace("https://www.google.com/"), 300);
+    return;
+  }
+  window.location.replace("https://www.google.com/");
+}
+
 function showNoticeIfNeeded() {
   if (!noticeSeen()) openNotice();
 }
@@ -1620,6 +1632,7 @@ function bindEvents() {
   });
   $("#btn-notice").addEventListener("click", openNotice);
   $("#btn-notice-close").addEventListener("click", acceptNotice);
+  $("#btn-notice-decline").addEventListener("click", declineNotice);
   $("#btn-share").addEventListener("click", copyShareLink);
   $("#btn-geocode").addEventListener("click", () => startGeocode("filtered"));
   $("#btn-geocode-all").addEventListener("click", () => startGeocode("all"));

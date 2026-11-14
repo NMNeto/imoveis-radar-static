@@ -211,7 +211,8 @@ Para outra frequência, edite o `cron`. O GitHub Actions sempre usa UTC.
 - **Aviso de primeira visita** — o site informa que é apenas consulta, que os
   dados devem ser confirmados nas fontes originais e que não há cookies
   próprios de análise/publicidade; usa-se `localStorage` para preferências e
-  para não repetir o aviso.
+  para não repetir o aviso. O botão **Não aceito** tenta fechar a aba e, se o
+  navegador bloquear, redireciona para o Google.
 - **Geocodificação** roda no Python, com cache e limite de requisições;
   os botões de geocodificação do site apenas orientam/abrem o workflow.
 - **Configurações** no navegador são locais; use Exportar + `importar_config.py`

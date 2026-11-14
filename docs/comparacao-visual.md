@@ -90,6 +90,8 @@ visita são mudanças intencionais solicitadas.
 - Primeira visita: o aviso abre automaticamente; “Entendi e continuar” fecha
   e grava a marca no `localStorage`; recarregar não reabre; o botão “Aviso”
   reabre quando quiser.
+- “Não aceito”: redireciona para `https://www.google.com/` (com tentativa de
+  fechar a aba quando permitido pelo navegador) e não grava a marca de leitura.
 - Console sem erros em desktop e mobile.
 
 ## 6. Conclusão

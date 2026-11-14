@@ -41,7 +41,21 @@ Título: **Antes de continuar**
 > novamente. A Cloudflare pode usar cookies estritamente necessários de
 > segurança da plataforma.
 
-Botão: **Entendi e continuar**
+Botões:
+
+- **Entendi e continuar** — fecha o aviso e grava a marca no `localStorage`.
+- **Não aceito** — tenta fechar a aba (quando ela foi aberta por script);
+  se o navegador bloquear, redireciona para `https://www.google.com/`.
+  O aviso não é marcado como lido; se a pessoa voltar, ele aparece de novo.
+
+> **Por que Google?** `window.close()` só funciona de forma confiável em abas
+> abertas por `window.open`. Em uma aba normal, o navegador ignora a chamada.
+> O redirecionamento com `location.replace` é a saída garantida e não deixa o
+> aviso no histórico.
+
+Texto do rodapé do aviso:
+
+> Se você não concordar com estes termos, use “Não aceito” para sair.
 
 ## 3. Sugestões alternativas
 
