@@ -188,6 +188,7 @@ Para outra frequência, edite o `cron`. O GitHub Actions sempre usa UTC.
 
 ## Documentação
 
+- [Checklist de entrega](docs/entrega.md)
 - [Relatório técnico do site original](docs/relatorio-tecnico-original.md)
 - [Arquitetura e decisões](docs/arquitetura.md)
 - [Dados, campos e atualização](docs/dados-e-atualizacao.md)
