@@ -23,6 +23,7 @@
     <div class="actions">
       <span id="update-status" class="status"></span>
       <button id="btn-notice" class="btn" type="button">Aviso</button>
+      <a id="btn-feedback" class="btn" href="https://forms.gle/HnciJsM5Xzto8ATd6" target="_blank" rel="noopener noreferrer" title="Enviar sugestão de melhoria">Sugestões</a>
       <a id="btn-download" class="btn" href="data/busca_imoveis.csv" download>Baixar CSV</a>
       <button id="btn-share" class="btn" type="button">Compartilhar</button>
       <button id="btn-config" class="btn" type="button">Configurações</button>
@@ -117,6 +118,11 @@
         ao repositório, onde o script Python a incorpora na próxima atualização.
         Use <code>all</code> como curinga em Bairro/Endereço.
       </p>
+      <p class="muted">
+        Cada lista começa com um exemplo que <strong>não corresponde a nenhum
+        imóvel real</strong> (<code>00000000</code> / <code>CIDADE EXEMPLO</code>).
+        Substitua ou apague as linhas para usar o filtro de verdade.
+      </p>
       <h3 class="config-title">Custos e premissas</h3>
       <div class="config-grid config-costs">
         <label>Taxa Corretagem Venda (%)
@@ -160,6 +166,24 @@
     </form>
   </dialog>
 
+  <dialog id="feedback-dialog" class="feedback-dialog" aria-labelledby="feedback-title">
+    <div class="feedback-form">
+      <div class="dialog-head">
+        <h2 id="feedback-title">Sugestões e melhorias</h2>
+        <button id="btn-feedback-close" class="btn small" type="button">Fechar</button>
+      </div>
+      <p class="muted feedback-hint">
+        Conte o que podemos melhorar no Busca Imóveis. As respostas são vistas
+        apenas pelo responsável pelo site. O formulário é hospedado pelo Google
+        Forms e segue as políticas do Google.
+      </p>
+      <iframe id="feedback-frame" class="feedback-frame" title="Formulário de sugestões" loading="lazy" referrerpolicy="no-referrer"></iframe>
+      <div class="feedback-foot">
+        <span class="muted">Não abriu? <a id="feedback-external" href="https://forms.gle/HnciJsM5Xzto8ATd6" target="_blank" rel="noopener noreferrer">Abrir no Google Forms</a>.</span>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="notice-dialog" class="notice-dialog" aria-labelledby="notice-title">
     <div class="notice-form">
       <h2 id="notice-title">Antes de continuar</h2>
@@ -184,10 +208,10 @@
         estritamente necessários de segurança da plataforma.
       </p>
       <p class="notice-decline-hint">
-        Se você não concordar com estes termos, use “Não aceito” para sair.
+        Se você não concordar com estes termos, use “Não concordo” para sair.
       </p>
       <div class="notice-actions">
-        <button id="btn-notice-decline" class="btn" type="button" title="Sair do site e ir para o Google">Não aceito</button>
+        <button id="btn-notice-decline" class="btn" type="button" title="Sair do site e ir para o Google">Não concordo</button>
         <button id="btn-notice-close" class="btn primary" type="button">Entendi e continuar</button>
       </div>
     </div>

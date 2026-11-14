@@ -19,7 +19,15 @@ campos divergentes ....: 0
 A comparação ignorou apenas `primeira_visao` e `atualizado_em`, campos novos
 de auditoria que o original não possui. Todos os demais campos — incluindo
 `id`, localização, preços, desconto, lucro, exclusão, imagem, link,
-coordenadas e precisão geográfica — são idênticos.
+coordenadas e precisão geográfica — eram idênticos **com a configuração
+original**.
+
+Depois, a pedido, a configuração pública foi limpa: cada lista
+(`exclude_ids`, `exclude_locations`, `market_value`) ficou com **um exemplo
+sem correspondência real**. Isso altera intencionalmente apenas os campos
+derivados de exclusão/valor ajustado: agora há **0 imóveis excluídos** e
+**0 overrides de valor**. Os campos de origem continuam idênticos e o total
+segue em 26.317.
 
 Script de comparação usado (executado fora do projeto original, com
 `PYTHONDONTWRITEBYTECODE=1`):
@@ -49,11 +57,15 @@ print("OK", len(ours))
 
 | Fonte | Total | Excluídos | Com imagem | Com coordenadas |
 | --- | ---: | ---: | ---: | ---: |
-| Caixa | 23.782 | 6.882 | 23.782 | 23.782 |
-| Banco do Brasil | 892 | 174 | 888 | 892 |
-| Santander | 1.300 | 85 | 1.296 | 1.300 |
-| Itaú | 343 | 19 | 309 | 343 |
-| **Total** | **26.317** | **7.160** | **26.275** | **26.317** |
+| Caixa | 23.782 | 0 | 23.782 | 23.782 |
+| Banco do Brasil | 892 | 0 | 888 | 892 |
+| Santander | 1.300 | 0 | 1.296 | 1.300 |
+| Itaú | 343 | 0 | 309 | 343 |
+| **Total** | **26.317** | **0** | **26.275** | **26.317** |
+
+Na configuração original havia 7.160 excluídos (171 IDs, 141 locais e 153
+valores manuais). A versão pública agora mostra um exemplo em cada lista, sem
+correspondência real, para servir de modelo de uso sem esconder imóveis.
 
 Precisão geográfica: 845 bairro, 25.370 cidade, 102 estado.
 UFs: 27. Modalidades: 9.
@@ -115,7 +127,7 @@ Testes automatizados cobrem:
 python -m pytest -q
 ```
 
-Cobertura atual: **31 testes**, todos passando. Incluem:
+Cobertura atual: **37 testes**, todos passando. Incluem:
 
 - `test_text.py` — dinheiro brasileiro, acentos, normalização;
 - `test_csv_sources.py` — cabeçalho da Caixa, encoding, colunas, queda;
@@ -125,7 +137,9 @@ Cobertura atual: **31 testes**, todos passando. Incluem:
 - `test_collect.py` — modo offline, download atômico, CAPTCHA;
 - `test_publish.py` — publicação, idempotência, chunks versionados, dry-run;
 - `test_cli.py` — fluxo completo e `--validate-only`;
-- `test_importar_config.py` — importação e dry-run.
+- `test_importar_config.py` — importação e dry-run;
+- `test_security.py` — cabeçalhos, CSP sem `unsafe-eval/inline`, ausência de
+  source maps, CORS sem curinga, handlers inline e segredos óbvios.
 
 ## 7. Tamanhos e limites
 

@@ -145,6 +145,11 @@ Os arquivos canônicos ficam em `data/config/`:
 - `exclude_locations.csv` — `Cidade,Bairro,Endereço` (`all` é curinga);
 - `market_value.csv` — `ID,Valor de Venda Aproximado`.
 
+O repositório vem com **um exemplo em cada lista** (`00000000` /
+`CIDADE EXEMPLO,BAIRRO EXEMPLO,all` / `00000000,350000.00`). Esses exemplos
+não correspondem a imóveis reais e servem apenas para mostrar o formato; o
+site público não esconde nem ajusta nenhum imóvel por causa deles.
+
 No site, a caixa **Configurações** edita esses valores **neste navegador**
 (localStorage). O botão **Exportar** baixa `config-local.json`; para aplicar
 ao repositório, rode:
@@ -190,6 +195,7 @@ Para outra frequência, edite o `cron`. O GitHub Actions sempre usa UTC.
 
 - [Checklist de entrega](docs/entrega.md)
 - [Aviso de primeira visita e privacidade](docs/aviso-e-privacidade.md)
+- [Auditoria de segurança](docs/security-audit.md)
 - [Relatório técnico do site original](docs/relatorio-tecnico-original.md)
 - [Arquitetura e decisões](docs/arquitetura.md)
 - [Dados, campos e atualização](docs/dados-e-atualizacao.md)
@@ -211,8 +217,12 @@ Para outra frequência, edite o `cron`. O GitHub Actions sempre usa UTC.
 - **Aviso de primeira visita** — o site informa que é apenas consulta, que os
   dados devem ser confirmados nas fontes originais e que não há cookies
   próprios de análise/publicidade; usa-se `localStorage` para preferências e
-  para não repetir o aviso. O botão **Não aceito** tenta fechar a aba e, se o
-  navegador bloquear, redireciona para o Google.
+  para não repetir o aviso. O botão **Não concordo** redireciona para o
+  Google.
+- **Sugestões** — o botão abre um Google Form em um modal; as respostas ficam
+  privadas na conta do responsável. Há fallback para abrir o formulário em
+  nova aba. A URL fica em `public/static/config.js`
+  (`feedbackUrl`/`feedbackEmbedUrl`).
 - **Geocodificação** roda no Python, com cache e limite de requisições;
   os botões de geocodificação do site apenas orientam/abrem o workflow.
 - **Configurações** no navegador são locais; use Exportar + `importar_config.py`

@@ -5,14 +5,22 @@ Capturados com Playwright/Chromium, locale `pt-BR`, após 5–6 s de espera.
 | Arquivo | Descrição |
 | --- | --- |
 | `original-desktop.png` | projeto original, 1440×1000 |
-| `static-desktop.png` | site estático, 1440×1000 (aviso já dispensado) |
 | `original-mobile.png` | projeto original, 390×844 |
-| `static-mobile.png` | site estático, 390×844 (aviso já dispensado) |
+| `static-antes-limpeza-desktop.png` | estático com a configuração original, 1440×1000 |
+| `static-antes-limpeza-mobile.png` | estático com a configuração original, 390×844 |
+| `diff-layout-antes-limpeza.png` | diferença de layout antes da limpeza |
+| `static-desktop.png` | estático atual, após limpar as listas, 1440×1000 |
+| `static-mobile.png` | estático atual, após limpar as listas, 390×844 |
+| `diff-desktop.png` | diferença atual (inclui conteúdo intencionalmente diferente) |
 | `static-notice-desktop.png` | aviso de primeira visita, desktop |
 | `static-notice-mobile.png` | aviso de primeira visita, mobile |
-| `diff-desktop.png` | diferença amplificada (3×) |
+| `feedback-desktop.png` | modal Sugestões com o Google Form, desktop |
+| `feedback-mobile.png` | modal Sugestões com o Google Form, mobile |
 
-Resultado: 99,58% dos pixels idênticos no desktop e 98,25% no mobile. As
-diferenças restantes são o botão “Atualizar agora” (removido e substituído por
-“Aviso”), o texto de status de atualização e o timing de tiles do mapa.
+- **Layout com a mesma configuração:** 99,58% de pixels idênticos no desktop
+  e 98,25% no mobile.
+- **Estado atual:** 17.876 imóveis (antes 11.882), pois as listas de exclusão
+  e valores manuais foram limpas para um exemplo sem correspondência real.
+  A diferença de 24,78% no desktop é de **conteúdo**, não de layout.
+
 Detalhes em [../comparacao-visual.md](../comparacao-visual.md).

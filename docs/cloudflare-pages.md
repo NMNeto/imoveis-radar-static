@@ -55,6 +55,8 @@ Checklist:
 - [ ] “Compartilhar” copia a URL com filtros.
 - [ ] O aviso de primeira visita aparece, fecha em “Entendi e continuar” e
       não reabre ao recarregar; o botão “Aviso” reabre.
+- [ ] “Sugestões” abre o Google Form no modal e o fallback “Abrir no Google
+      Forms” funciona.
 - [ ] “Configurações” abre e salva ajustes locais.
 - [ ] Console do navegador sem erros.
 - [ ] Layout responsivo em 390 px e 1440 px.

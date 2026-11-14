@@ -145,9 +145,13 @@ Configuração pública para a caixa de Configurações: `settings`,
   “Ajustar valor” e “Excluir”.
 - Imagens de BB/Santander/Itaú passam por `/api/image`; Caixa continua
   hot-linked.
-- `config.js` centraliza `imageProxy` sem build step.
+- `config.js` centraliza `imageProxy` e as URLs do Google Form de sugestões
+  (`feedbackUrl`/`feedbackEmbedUrl`) sem build step.
 - O aviso de primeira visita usa `localStorage` apenas para lembrar que o
   usuário já o leu; não há cookies próprios de análise/publicidade.
+- O modal **Sugestões** carrega o Google Form sob demanda (somente ao abrir),
+  reduzindo requisições e evitando cookies de terceiros no carregamento
+  inicial.
 
 ## 6. Isolamento do projeto original
 

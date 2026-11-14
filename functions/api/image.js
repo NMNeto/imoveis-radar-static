@@ -117,7 +117,7 @@ export async function onRequestGet(context) {
       "Content-Length": String(buffer.byteLength),
       "Cache-Control": `public, max-age=${CACHE_SECONDS}, immutable`,
       "X-Content-Type-Options": "nosniff",
-      "Access-Control-Allow-Origin": "*",
+      "Cross-Origin-Resource-Policy": "same-origin",
     },
   });
 

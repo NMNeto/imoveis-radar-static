@@ -24,5 +24,12 @@ Thumbs.db
 .idea/
 .vscode/
 
-# Wrangler/Cloudflare local
+# Wrangler/Cloudflare local e segredos
 .wrangler/
+.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+wrangler.toml
+wrangler.jsonc

@@ -43,9 +43,49 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger("dev-server")
 
 
+def load_header_rules(public_dir: Path):
+    """Lê o _headers do Pages para o preview local refletir produção."""
+    path = public_dir / "_headers"
+    if not path.exists():
+        return []
+    rules = []
+    current = None
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        if not raw.strip() or raw.lstrip().startswith("#"):
+            continue
+        if not raw[0].isspace():
+            current = (raw.strip(), [])
+            rules.append(current)
+            continue
+        if current is not None and ":" in raw:
+            name, value = raw.strip().split(":", 1)
+            current[1].append((name.strip(), value.strip()))
+    return rules
+
+
+def _matches(pattern: str, path: str) -> bool:
+    path = path.split("?", 1)[0]
+    if pattern == "/*":
+        return True
+    if pattern.endswith("*"):
+        return path.startswith(pattern[:-1])
+    return path == pattern
+
+
 class Handler(SimpleHTTPRequestHandler):
+    header_rules = []
+
     def __init__(self, *args, directory: str | None = None, **kwargs):
         super().__init__(*args, directory=directory, **kwargs)
+
+    def end_headers(self):
+        # Aplica as regras do _headers no preview local (mesmo formato do
+        # Cloudflare Pages). O deploy real continua usando public/_headers.
+        for pattern, headers in self.header_rules:
+            if _matches(pattern, self.path):
+                for name, value in headers:
+                    self.send_header(name, value)
+        super().end_headers()
 
     def do_GET(self):  # noqa: N802
         parsed = urlparse(self.path)
@@ -140,6 +180,7 @@ def main() -> int:
     parser.add_argument("--port", type=int, default=8080)
     parser.add_argument("--public", type=Path, default=PROJECT_ROOT / "public")
     args = parser.parse_args()
+    Handler.header_rules = load_header_rules(args.public)
     handler = lambda *a, **kw: Handler(*a, directory=str(args.public), **kw)  # noqa: E731
     server = ThreadingHTTPServer((args.host, args.port), handler)
     logger.info("Servindo %s em http://%s:%s", args.public, args.host, args.port)

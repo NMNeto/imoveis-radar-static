@@ -15,6 +15,10 @@
 - **Terceiros:** ao clicar em “Ver oferta”, o usuário vai para Caixa, BB,
   Santander, Itaú ou parceiros. Esses sites têm suas próprias políticas de
   cookies e privacidade.
+- **Sugestões:** o formulário é hospedado pelo **Google Forms**. O site não
+  armazena as respostas; elas ficam na conta do responsável pelo formulário.
+  O Google pode usar cookies próprios; consulte a política de privacidade do
+  Google.
 - **Mapa:** tiles do OpenStreetMap; geocodificação Nominatim/Photon no
   servidor, não no navegador.
 
@@ -44,18 +48,17 @@ Título: **Antes de continuar**
 Botões:
 
 - **Entendi e continuar** — fecha o aviso e grava a marca no `localStorage`.
-- **Não aceito** — tenta fechar a aba (quando ela foi aberta por script);
-  se o navegador bloquear, redireciona para `https://www.google.com/`.
-  O aviso não é marcado como lido; se a pessoa voltar, ele aparece de novo.
+- **Não concordo** — redireciona para `https://www.google.com/` usando
+  `location.replace`, sem deixar o aviso no histórico. O aviso não é marcado
+  como lido; se a pessoa voltar, ele aparece de novo.
 
-> **Por que Google?** `window.close()` só funciona de forma confiável em abas
-> abertas por `window.open`. Em uma aba normal, o navegador ignora a chamada.
-> O redirecionamento com `location.replace` é a saída garantida e não deixa o
-> aviso no histórico.
+> **Por que só redirecionar?** `window.close()` só funciona de forma confiável
+> em abas abertas por `window.open`; em uma aba normal o navegador ignora a
+> chamada. O redirecionamento é a saída garantida e previsível.
 
 Texto do rodapé do aviso:
 
-> Se você não concordar com estes termos, use “Não aceito” para sair.
+> Se você não concordar com estes termos, use “Não concordo” para sair.
 
 ## 3. Sugestões alternativas
 
@@ -91,3 +94,20 @@ Texto do rodapé do aviso:
   `openNotice`, `acceptNotice`.
 - A chave `imoveis-radar-static:notice:v1` no `localStorage` controla se o
   aviso já foi lido. Para testar novamente, apague essa chave no DevTools.
+
+## 5. Sugestões
+
+O botão **Sugestões** abre o Google Form
+<https://forms.gle/HnciJsM5Xzto8ATd6> em um modal. A URL de incorporação e o
+link externo ficam em `public/static/config.js`:
+
+```js
+feedbackUrl: "https://forms.gle/HnciJsM5Xzto8ATd6",
+feedbackEmbedUrl: "https://docs.google.com/forms/d/e/.../viewform?embedded=true",
+```
+
+- As respostas são privadas na conta Google do responsável.
+- O site não armazena nenhuma resposta.
+- Se o iframe não carregar, o modal oferece “Abrir no Google Forms”.
+- Se você trocar o formulário, atualize as duas URLs em `config.js`.
+- Confira no Google Forms se o link de “Ver respostas” não está público.

@@ -128,12 +128,19 @@ function escapeHtml(value) {
 
 function safeUrl(value) {
   const text = String(value || "").trim();
-  return /^https?:\/\//i.test(text) ? text : "";
+  if (!/^https?:\/\//i.test(text)) return "";
+  try {
+    const parsed = new URL(text);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return "";
+    return parsed.href;
+  } catch (error) {
+    return "";
+  }
 }
 
 function imageSrc(item) {
   const url = safeUrl(item.imagem);
-  if (!url) return "";
+  if (!url || !url.startsWith("https://")) return "";
   const proxy = window.IMOVEIS_CONFIG?.imageProxy;
   if (item.fonte && item.fonte !== "caixa" && proxy) {
     return `${proxy}?url=${encodeURIComponent(url)}`;
@@ -293,19 +300,32 @@ function acceptNotice() {
 }
 
 function declineNotice() {
-  // window.close() só é permitido para abas abertas por script. Se o
-  // navegador bloquear, o fallback leva ao Google.
-  const canClose = window.opener && !window.opener.closed;
-  if (canClose) {
-    window.close();
-    setTimeout(() => window.location.replace("https://www.google.com/"), 300);
-    return;
-  }
+  // Redirecionamento simples e garantido. window.close() não é confiável
+  // em abas abertas pelo usuário.
   window.location.replace("https://www.google.com/");
 }
 
 function showNoticeIfNeeded() {
   if (!noticeSeen()) openNotice();
+}
+
+function openFeedback() {
+  const dialog = $("#feedback-dialog");
+  if (!dialog) return;
+  const config = window.IMOVEIS_CONFIG || {};
+  const frame = $("#feedback-frame");
+  const external = $("#feedback-external");
+  if (external && config.feedbackUrl) external.href = config.feedbackUrl;
+  if (!config.feedbackEmbedUrl) {
+    if (config.feedbackUrl) {
+      window.open(config.feedbackUrl, "_blank", "noopener,noreferrer");
+    } else {
+      showToast("Formulário de sugestões indisponível.", true);
+    }
+    return;
+  }
+  if (frame && !frame.getAttribute("src")) frame.src = config.feedbackEmbedUrl;
+  if (!dialog.open) dialog.showModal();
 }
 
 async function getJSON(url) {
@@ -1101,8 +1121,8 @@ function cardHtml(item) {
     : `<div class="profit ${profitClass}">Lucro est. ${formatBRL(item.lucro)} (${formatPct(item.lucro_pct)})</div>`;
   return `
     <article class="card ${item.excluido ? "excluded" : ""}" data-id="${escapeHtml(item.id)}">
-      <a class="thumb" href="${link}" target="_blank" rel="noopener noreferrer">
-        ${image ? `<img src="${image}" alt="Imóvel ${escapeHtml(item.id_fonte || item.id)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='${IMAGE_PLACEHOLDER}'">` : `<img src="${IMAGE_PLACEHOLDER}" alt="">`}
+      <a class="thumb" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">
+        ${image ? `<img src="${escapeHtml(image)}" alt="Imóvel ${escapeHtml(item.id_fonte || item.id)}" loading="lazy" referrerpolicy="no-referrer" data-fallback="${IMAGE_PLACEHOLDER}">` : `<img src="${IMAGE_PLACEHOLDER}" alt="">`}
         <span class="badge">${discountLabel(item)}</span>
         ${adjusted}
         ${excluded}
@@ -1121,7 +1141,7 @@ function cardHtml(item) {
           <span class="tag">ID ${escapeHtml(item.id_fonte || item.id)}</span>
         </div>
         <div class="card-actions">
-          <a class="btn small" href="${link}" target="_blank" rel="noopener noreferrer">Ver oferta</a>
+          <a class="btn small" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">Ver oferta</a>
           <button class="btn small" type="button" data-action="adjust" data-id="${escapeHtml(item.id)}">Ajustar valor</button>
           <button class="btn small danger" type="button" data-action="exclude" data-id="${escapeHtml(item.id)}">Excluir</button>
         </div>
@@ -1144,12 +1164,12 @@ function popupHtml(item) {
   const profit = item.lucro == null ? "Lucro não calculado" : `Lucro ${formatBRL(item.lucro)}`;
   return `
     <div class="popup">
-      ${image ? `<img src="${image}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'">` : ""}
+      ${image ? `<img src="${escapeHtml(image)}" alt="" loading="lazy" referrerpolicy="no-referrer" data-fallback="hide">` : ""}
       <strong>${priceLabel(item)}</strong>
       <div class="line">${discountLabel(item)} · ${profit}</div>
       <div class="line">${escapeHtml(item.endereco)}<br>${escapeHtml(item.bairro)} — ${escapeHtml(item.cidade)}/${escapeHtml(item.uf)}</div>
       <div class="line">${escapeHtml(sourceLabel(item))} · ${escapeHtml(item.modalidade || "")} · ID ${escapeHtml(item.id_fonte || item.id)}</div>
-      ${link ? `<a href="${link}" target="_blank" rel="noopener noreferrer">Ver oferta →</a>` : ""}
+      ${link ? `<a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">Ver oferta →</a>` : ""}
     </div>
   `;
 }
@@ -1568,6 +1588,24 @@ function scheduleFetch() {
 }
 
 function bindEvents() {
+  // Fallback de imagens sem usar atributos inline (compatível com CSP).
+  document.addEventListener(
+    "error",
+    (event) => {
+      const img = event.target;
+      if (!(img instanceof HTMLImageElement)) return;
+      const fallback = img.dataset.fallback;
+      if (!fallback || fallback === "done") return;
+      img.dataset.fallback = "done";
+      if (fallback === "hide") {
+        img.style.display = "none";
+      } else {
+        img.src = fallback;
+      }
+    },
+    true
+  );
+
   $("#combo-uf").querySelector("[data-combo-value]").addEventListener("change", () => {
     state.filters.cidade = "all";
     state.filters.bairro = "all";
@@ -1633,6 +1671,12 @@ function bindEvents() {
   $("#btn-notice").addEventListener("click", openNotice);
   $("#btn-notice-close").addEventListener("click", acceptNotice);
   $("#btn-notice-decline").addEventListener("click", declineNotice);
+  $("#btn-feedback").addEventListener("click", (event) => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey) return;
+    event.preventDefault();
+    openFeedback();
+  });
+  $("#btn-feedback-close").addEventListener("click", () => $("#feedback-dialog").close());
   $("#btn-share").addEventListener("click", copyShareLink);
   $("#btn-geocode").addEventListener("click", () => startGeocode("filtered"));
   $("#btn-geocode-all").addEventListener("click", () => startGeocode("all"));

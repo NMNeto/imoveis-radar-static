@@ -1,10 +1,16 @@
 /*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https://venda-imoveis.caixa.gov.br https://*.tile.openstreetmap.org; font-src 'self'; connect-src 'self'; frame-src https://docs.google.com https://forms.gle; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; upgrade-insecure-requests
+  X-Frame-Options: SAMEORIGIN
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
-  X-Frame-Options: SAMEORIGIN
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Resource-Policy: same-origin
+  X-Permitted-Cross-Domain-Policies: none
 
 /data/*
   Cache-Control: public, max-age=300
 
 /static/*
-  Cache-Control: public, max-age=3600
+  Cache-Control: public, max-age=300

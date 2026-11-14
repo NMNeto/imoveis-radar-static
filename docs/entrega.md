@@ -10,6 +10,8 @@
 - `public/index.html`, `public/static/*`, `public/data/*`
 - `functions/api/image.js` (proxy de imagens)
 - `public/_headers`, `public/_routes.json`, `public/robots.txt`
+- Modal **Sugestões** integrado ao Google Forms
+  (`https://forms.gle/HnciJsM5Xzto8ATd6`), com fallback para nova aba.
 
 ## 3. Novo diretório isolado
 
@@ -51,7 +53,7 @@
 
 ## 8. Testes automatizados
 
-- `tests/` — 31 testes.
+- `tests/` — 37 testes.
 - `python -m pytest -q` → todos passando.
 
 ## 9. Configuração Cloudflare Pages
@@ -72,17 +74,21 @@
 
 - [comparacao-visual.md](comparacao-visual.md)
 - Screenshots em `docs/screenshots/`.
-- 99,58% de pixels idênticos no desktop; 98,25% no mobile (diferenças:
-  botão “Atualizar agora” removido/substituído por “Aviso”, status de
-  atualização e timing de tiles).
+- 99,58% de pixels idênticos no desktop; 98,25% no mobile **com a mesma
+  configuração** (diferenças: botão “Atualizar agora” substituído por “Aviso”,
+  status e timing de tiles).
+- Depois da limpeza das listas, o site atual mostra 17.876 imóveis em vez de
+  11.882; a diferença de conteúdo é intencional e está documentada.
 - Aviso de primeira visita documentado em
   [aviso-e-privacidade.md](aviso-e-privacidade.md), com screenshots próprios.
 
 ## 12. Relatório de validação dos dados
 
 - [validacao-dados.md](validacao-dados.md)
-- 26.317 itens; 0 divergências de campo em relação ao original; 0 IDs
-  exclusivos de um lado; idempotência e falhas cobertas por testes.
+- 26.317 itens; 0 divergências de campo em relação ao original na comparação
+  inicial; depois a configuração pública foi limpa para um exemplo por lista,
+  resultando em 0 exclusões e 0 overrides intencionais. Idempotência e falhas
+  cobertas por testes.
 
 ## 13. Comprovação de integridade do original
 
@@ -91,7 +97,12 @@
 - Verificação final: 131/131 SUCESSO; `git status` vazio; HEAD
   `67490efaae7c3df9b5875ec80ada9fd7ef0f14ba`.
 
-## 14. Estimativa de franquias gratuitas
+## 14. Auditoria de segurança
+
+- [security-audit.md](security-audit.md)
+- CSP restritiva, headers, CORS, source maps, segredos, XSS e dependências.
+
+## 15. Estimativa de franquias gratuitas
 
 - [franquias-gratuitas.md](franquias-gratuitas.md)
 - Pages, Workers/Functions, D1, KV, R2, Turnstile e GitHub Actions, com
