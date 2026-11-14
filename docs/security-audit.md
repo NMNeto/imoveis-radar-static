@@ -209,23 +209,24 @@ reais de `public/_headers`:
 
 ## 10. Validação no domínio publicado
 
-Após o primeiro deploy das correções, foi verificado em
+Após o deploy final, foi verificado em
 `https://imoveis-radar-static.pages.dev/`:
 
-- CSP, HSTS, XFO, nosniff, Referrer-Policy, Permissions-Policy, COOP e CORP
-  presentes;
-- Function de imagem com resposta nova sem `Access-Control-Allow-Origin: *`;
-- respostas de imagem antigas em cache ainda tinham `*`; por isso a chave do
-  Cache API foi versionada para `v2`;
-- assets estáticos do Pages vinham com `Access-Control-Allow-Origin: *`
-  padrão; o `_headers` agora fixa a origem de produção;
-- caminhos `.map` retornavam o `index.html` com 200 (soft-404), mas **sem
-  conteúdo de source map**; foi adicionada uma página `404.html` para que o
-  Pages responda 404 de verdade quando essa configuração estiver ativa.
+- CSP, HSTS, XFO, nosniff, Referrer-Policy, Permissions-Policy, COOP, CORP e
+  `Access-Control-Allow-Origin` restrito à origem de produção;
+- Function de imagem nova sem `Access-Control-Allow-Origin: *`;
+- a chave do Cache API foi versionada para `v2`, e a imagem que antes vinha
+  do cache antigo passou a responder sem `*`;
+- assets estáticos (`/`, `/static/app.js`, JSON) com CORS restrito;
+- caminhos `.map` agora retornam **404** (não há source map exposto);
+- caminhos inexistentes retornam **404** via `404.html`;
+- site funcionando: 17.876 imóveis, 60 cartões, 12 tiles do mapa, imagens,
+  modal de sugestões, configurações, sem erros de console ou violações de
+  CSP.
 
-O site continuou funcionando no teste de produção: 17.876 imóveis, 60
-cartões, mapa, imagens, modal de sugestões e configurações, sem erros de
-console ou violações de CSP.
+Observação: a Function de imagem responde a `GET`; requisições `HEAD` não são
+usadas pelo site e podem cair no fallback estático. A verificação correta do
+proxy deve ser feita com `GET`.
 
 ## 11. Riscos residuais e recomendações
 
