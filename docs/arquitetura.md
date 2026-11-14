@@ -140,7 +140,9 @@ Configuração pública para a caixa de Configurações: `settings`,
 - Carrega `data/manifest.json` e depois os blocos em paralelo.
 - Aplica overrides locais e recalcula desconto/lucro.
 - Porta `filter_items`, `sort_items` e a lógica de facetas de `caixa_data.py`.
+- Unifica variantes de cidade/bairro por nome normalizado (ex.: Niteroi/Niterói).
 - Usa a mesma paginação progressiva (60 por vez, teto de 5.000 itens).
+- Começa com o filtro do mapa ativo; “Limpar área” desativa o filtro.
 - Mantém URL compartilhável, typeahead, mapa com clusters, popups, CSV,
   “Ajustar valor” e “Excluir”.
 - Imagens de BB/Santander/Itaú passam por `/api/image`; Caixa continua

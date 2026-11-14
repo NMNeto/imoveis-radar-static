@@ -34,6 +34,7 @@ from .geo import (
     load_geocode_cache,
     seed_geo_points,
 )
+from .locations import canonicalize_locations
 from .model import (
     apply_history_timestamps,
     build_item,
@@ -403,6 +404,16 @@ def _run_locked(paths: Paths, options: RunOptions) -> int:
         if duplicates:
             logger.warning("%s item(ns) duplicado(s) removido(s).", duplicates)
 
+        items, location_stats = canonicalize_locations(items)
+        logger.info(
+            "Locais normalizados: %s cidade(s), %s bairro(s), %s variante(s) "
+            "de cidade e %s de bairro unificadas.",
+            location_stats["cidades"],
+            location_stats["bairros"],
+            location_stats["variantes_cidade"],
+            location_stats["variantes_bairro"],
+        )
+
         geocode_stats = geocode_missing(items, cache, paths, options)
         for item in items:
             attach_coordinates(item, cache)
@@ -478,6 +489,7 @@ def _run_locked(paths: Paths, options: RunOptions) -> int:
             digest,
             data_atualizacao,
         )
+        stats["locais"] = location_stats
         last_update = {
             "data_atualizacao": data_atualizacao,
             "ultima_execucao": now,
@@ -489,6 +501,7 @@ def _run_locked(paths: Paths, options: RunOptions) -> int:
             "sha256": digest,
             "fontes": source_status,
             "geocodificacao": geocode_stats,
+            "locais": location_stats,
         }
 
         result = publisher.publish(
@@ -532,6 +545,7 @@ def _run_locked(paths: Paths, options: RunOptions) -> int:
                 for source, status in source_status.items()
             ),
             "geocodificacao": geocode_stats,
+            "locais": location_stats,
             "geracao": generation_date,
             "data_atualizacao": data_atualizacao,
             "historico_alterado": history_changed,

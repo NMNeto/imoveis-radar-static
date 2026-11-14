@@ -127,7 +127,7 @@ Testes automatizados cobrem:
 python -m pytest -q
 ```
 
-Cobertura atual: **41 testes**, todos passando. Incluem:
+Cobertura atual: **45 testes**, todos passando. Incluem:
 
 - `test_text.py` — dinheiro brasileiro, acentos, normalização;
 - `test_csv_sources.py` — cabeçalho da Caixa, encoding, colunas, queda;
@@ -140,7 +140,9 @@ Cobertura atual: **41 testes**, todos passando. Incluem:
 - `test_importar_config.py` — importação e dry-run;
 - `test_security.py` — cabeçalhos, CSP sem `unsafe-eval/inline`, ausência de
   source maps, CORS sem curinga, handlers inline e segredos óbvios;
-- `test_help.py` — botão Ajuda, conteúdo do guia e atalho dentro do aviso.
+- `test_help.py` — botão Ajuda, conteúdo do guia e atalho dentro do aviso;
+- `test_locations.py` — unificação de cidades/bairros (ex.: Niteroi/Niterói)
+  e idempotência da normalização.
 
 ## 7. Tamanhos e limites
 

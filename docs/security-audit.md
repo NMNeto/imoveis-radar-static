@@ -20,7 +20,7 @@ publicado só recebe as mudanças após commit/push.
 | 7 | XSS/`innerHTML` | `onerror` inline e URLs interpoladas sem escape | Handlers inline removidos; URLs escapadas; `safeUrl` com `new URL`; imagens só HTTPS |
 | 8 | Recursos externos/SRI | Scripts/estilos são locais; Google Forms/OSM são iframe/imagens | Sem SRI aplicável a iframe; CSP restringe origens; tudo em HTTPS |
 
-Resultado: **41 testes passando**, preview local com CSP ativa sem erros de
+Resultado: **45 testes passando**, preview local com CSP ativa sem erros de
 console, mapa, imagens, popups, configurações e formulário de sugestões
 funcionando.
 
@@ -184,7 +184,7 @@ Correções:
   vulnerabilities found**.
 - Desenvolvimento (`requirements-dev.txt`): `pytest 8.4.2` apresentava
   `PYSEC-2026-1845`; atualizado para `pytest>=9.0.3,<10`. Nova auditoria:
-  **No known vulnerabilities found**. Os 41 testes passam com pytest 9.
+  **No known vulnerabilities found**. Os 45 testes passam com pytest 9.
 - Scripts e CSS próprios são locais (`public/static/*`), então SRI não é
   necessário para eles. O iframe do Google Forms não suporta SRI; a proteção
   é a CSP `frame-src` restrita. Os tiles do OSM são imagens HTTPS.

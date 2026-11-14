@@ -861,12 +861,18 @@ function initCombos() {
   });
 }
 
+function canonicalOption(values, preferred) {
+  if (!preferred || preferred === "all") return "all";
+  if (values.includes(preferred)) return preferred;
+  const wanted = normText(preferred);
+  return values.find((value) => normText(value) === wanted) || "all";
+}
+
 function populateUfs(preferred = state.filters.uf, values = null) {
   const meta = state.meta;
   if (!meta) return;
   const list = Array.isArray(values) ? values : (meta.ufs || []);
-  let current = preferred;
-  if (current !== "all" && !list.includes(current)) current = "all";
+  const current = canonicalOption(list, preferred);
   comboSet("#combo-uf", list, current, "Todas");
   state.filters.uf = comboValue("#combo-uf");
 }
@@ -879,7 +885,8 @@ function populateCities(preferred = state.filters.cidade, values = null) {
     ? uniqueSorted(Object.values(meta.cidades || {}).flat())
     : (meta.cidades?.[uf] || []);
   const cities = Array.isArray(values) ? values : fallback;
-  comboSet("#combo-cidade", cities, preferred, "Todas");
+  const current = canonicalOption(cities, preferred);
+  comboSet("#combo-cidade", cities, current, "Todas");
   state.filters.cidade = comboValue("#combo-cidade");
 }
 
@@ -904,8 +911,9 @@ function populateBairros(preferred = state.filters.bairro, values = null) {
     fallback = meta.bairros?.[`${uf}|${cidade}`] || [];
   }
   const bairros = Array.isArray(values) ? values : fallback;
+  const current = canonicalOption(bairros, preferred);
   comboSetDisabled("#combo-bairro", false);
-  comboSet("#combo-bairro", bairros, preferred, "Todos");
+  comboSet("#combo-bairro", bairros, current, "Todos");
   state.filters.bairro = comboValue("#combo-bairro");
 }
 
@@ -916,8 +924,9 @@ function populateModalidades(preferred = state.filters.modalidade, values = null
   select.innerHTML = [`<option value="all">Todas</option>`]
     .concat(modalidades.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`))
     .join("");
-  select.value = modalidades.includes(preferred) ? preferred : "all";
-  state.filters.modalidade = select.value;
+  const current = canonicalOption(modalidades, preferred);
+  select.value = current;
+  state.filters.modalidade = current;
 }
 
 function populateFontes(preferred = state.filters.fonte) {
@@ -1090,10 +1099,13 @@ async function loadMeta() {
     updateMapFilterUI();
     const bounds = boundsFromBbox(state.bbox);
     if (bounds && state.map) state.map.fitBounds(bounds, { padding: [12, 12] });
+  } else {
+    state.mapFilter = true;
+    state.bbox = currentMapBbox();
+    updateMapFilterUI();
   }
   updateHeader();
   updateUpdateStatus(state.meta.update || {});
-  setGeocodeRunning(false);
   refreshFacets();
 }
 
@@ -1310,29 +1322,20 @@ function renderMap() {
   }
 }
 
-function updateGeoStatus(job) {
+function updateGeoStatus() {
   const points = state.items.filter((item) => item.lat != null && item.lng != null).length;
   const total = state.items.length;
   const bairro = state.items.filter((item) => item.geo_precisao === "bairro").length;
   const cidade = state.items.filter((item) => item.geo_precisao === "cidade").length;
   const estado = state.items.filter((item) => item.geo_precisao === "estado").length;
   let text = `${points.toLocaleString("pt-BR")} de ${total.toLocaleString("pt-BR")} no mapa`;
-  if (job && job.running) {
-    text = `Geocodificando ${job.done || 0}/${job.total || 0}…`;
-  } else {
-    const parts = [];
-    if (bairro) parts.push(`${bairro.toLocaleString("pt-BR")} bairro`);
-    if (cidade) parts.push(`${cidade.toLocaleString("pt-BR")} cidade`);
-    if (estado) parts.push(`${estado.toLocaleString("pt-BR")} estado`);
-    if (parts.length) text += ` (${parts.join(", ")})`;
-  }
+  const parts = [];
+  if (bairro) parts.push(`${bairro.toLocaleString("pt-BR")} bairro`);
+  if (cidade) parts.push(`${cidade.toLocaleString("pt-BR")} cidade`);
+  if (estado) parts.push(`${estado.toLocaleString("pt-BR")} estado`);
+  if (parts.length) text += ` (${parts.join(", ")})`;
+  if (total && points < total) text += " · pontos aproximados";
   $("#geo-status").textContent = text;
-}
-
-function setGeocodeRunning(running) {
-  $("#btn-geocode").disabled = Boolean(running);
-  $("#btn-geocode-all").disabled = Boolean(running);
-  $("#btn-geocode-cancel").classList.toggle("hidden", !running);
 }
 
 function updateUpdateStatus(status) {
@@ -1355,12 +1358,6 @@ function updateUpdateStatus(status) {
   if (failures.length) {
     element.textContent += ` · falha em ${failures.map((source) => source.nome || source.source).join(", ")}`;
   }
-}
-
-function startGeocode(scope = "filtered") {
-  showToast(
-    "A geocodificação é feita pelo script Python durante a atualização automática."
-  );
 }
 
 /* --------------------------------------------------------------------------
@@ -1721,9 +1718,6 @@ function bindEvents() {
   });
   $("#btn-feedback-close").addEventListener("click", () => $("#feedback-dialog").close());
   $("#btn-share").addEventListener("click", copyShareLink);
-  $("#btn-geocode").addEventListener("click", () => startGeocode("filtered"));
-  $("#btn-geocode-all").addEventListener("click", () => startGeocode("all"));
-  $("#btn-geocode-cancel").addEventListener("click", () => setGeocodeRunning(false));
   $("#btn-config").addEventListener("click", openConfig);
   $("#btn-config-close").addEventListener("click", () => $("#config-dialog").close());
   $("#btn-config-export").addEventListener("click", exportConfig);
@@ -1734,6 +1728,9 @@ function bindEvents() {
 
 async function init() {
   initMap();
+  state.mapFilter = true;
+  state.bbox = currentMapBbox();
+  updateMapFilterUI();
   initCombos();
   bindEvents();
   showNoticeIfNeeded();

@@ -74,7 +74,8 @@ lucro_pct  = lucro / valor_ajustado * 100
 3. se falhou: mantém CSV anterior e inclui os itens anteriores no dataset
 4. constrói itens das fontes que responderam
 5. deduplica por id (última ocorrência vence)
-6. geocodifica locais novos (se habilitado)
+6. normaliza cidades/bairros (unifica variantes como Niteroi/Niterói)
+7. geocodifica bairros/cidades novos (se habilitado)
 7. aplica exclusões e valores manuais
 8. compara com a versão anterior:
    - novo → primeira_visao = atualizado_em = agora

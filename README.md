@@ -15,6 +15,10 @@ não foi modificado.
 - Preserva os campos e as fórmulas de desconto/lucro do projeto original.
 - Mantém filtros, busca, ordenação, paginação progressiva, mapa Leaflet,
   compartilhamento por URL e exportação CSV.
+- Unifica variantes de cidades/bairros com o mesmo nome normalizado
+  (ex.: Niteroi/Niterói) em uma única opção.
+- Inicia com o filtro do mapa ativo; “Limpar área” desativa. A geocodificação
+  é automática, sem botões manuais.
 - Atualiza os dados diariamente no GitHub Actions e publica no Cloudflare
   Pages via integração Git.
 - Faz proxy das imagens de BB/Santander/Itaú por uma Pages Function, sem
@@ -230,7 +234,8 @@ Para outra frequência, edite o `cron`. O GitHub Actions sempre usa UTC.
   consentimento no aviso; a inicialização fica em
   `public/static/gtm-loader.js`, sem `unsafe-inline`.
 - **Geocodificação** roda no Python, com cache e limite de requisições;
-  os botões de geocodificação do site apenas orientam/abrem o workflow.
+  a precisão é aproximada (bairro, cidade ou estado) e os pontos são
+  atualizados automaticamente.
 - **Configurações** no navegador são locais; use Exportar + `importar_config.py`
   para torná-las globais.
 - **Imagens de terceiros** podem ser bloqueadas pela origem; nesse caso o site

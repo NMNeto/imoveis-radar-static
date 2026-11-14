@@ -45,10 +45,12 @@ Checklist:
 
 - [ ] A página carrega com o mesmo visual do original.
 - [ ] “26.317 imóveis” aparece no cabeçalho.
-- [ ] Filtros de UF/cidade/bairro funcionam.
+- [ ] Filtros de UF/cidade/bairro funcionam; não há cidades/bairros
+      duplicados por acento/maiúsculas.
+- [ ] O filtro “Filtrar pelo mapa” já inicia ativo e “Limpar área” o desativa.
 - [ ] Busca, desconto mínimo, lucro mínimo e financiamento funcionam.
 - [ ] Ordenação e “Carregar mais” funcionam.
-- [ ] Mapa carrega tiles e clusters.
+- [ ] Mapa carrega tiles e clusters; não há botões de geocodificação manual.
 - [ ] Imagens de Caixa aparecem.
 - [ ] Imagens de Santander/Itaú/BB aparecem via `/api/image`.
 - [ ] “Baixar CSV” baixa `data/busca_imoveis.csv`.
