@@ -12,6 +12,7 @@ def test_help_markup_and_content():
         'id="help-dialog"',
         'id="btn-help-close"',
         'id="btn-notice-help"',
+        "criada para aprendizado com a ajuda de IA",
         "Como calculamos o desconto e o lucro",
         "Faça sua oferta",
         "Imóveis sem avaliação, sem preço ou com proposta",

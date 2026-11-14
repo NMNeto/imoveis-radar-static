@@ -36,9 +36,10 @@ de transparência e pode ser reaberto pelo botão **Aviso** no topo.
 
 Título: **Antes de continuar**
 
-> Este site é uma ferramenta independente de **consulta** e **não vende
-> imóveis**. Reunimos anúncios públicos da Caixa, Banco do Brasil, Santander e
-> Itaú para ajudar você a localizar oportunidades.
+> Este site é uma ferramenta independente de **consulta**, criada para
+> aprendizado com a ajuda de IA, e **não vende imóveis**. Reunimos anúncios
+> públicos da Caixa, Banco do Brasil, Santander e Itaú para ajudar você a
+> localizar oportunidades.
 >
 > Preços, disponibilidade, condições, imagens e links podem mudar a qualquer
 > momento. **Confirme sempre as informações no site oficial da fonte** antes de
