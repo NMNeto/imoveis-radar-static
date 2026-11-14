@@ -1,0 +1,22 @@
+[project]
+name = "imoveis-radar-static"
+version = "1.0.0"
+description = "Site estático do Imóveis Radar com atualização automática via Python"
+requires-python = ">=3.11"
+dependencies = [
+  "requests>=2.31,<3",
+  "beautifulsoup4>=4.12,<5",
+  "playwright>=1.40,<2",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["scripts"]
+addopts = "-q"
+filterwarnings = [
+  "ignore::DeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["scripts/imoveis_radar"]
+omit = ["scripts/imoveis_radar/collectors/*"]

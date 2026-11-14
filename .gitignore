@@ -1,0 +1,28 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs e estado local do atualizador (não publicados)
+data/logs/
+data/.atualizacao.lock
+data/raw/*/.tmp-*
+data/history/.tmp-*
+
+# Exportações locais de configuração
+config-local.json
+*.local.json
+
+# Sistema/editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Wrangler/Cloudflare local
+.wrangler/

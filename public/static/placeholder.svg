@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480">
+  <rect width="640" height="480" fill="#e9edf0"/>
+  <g fill="none" stroke="#9aa7b1" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M180 260 L320 150 L460 260"/>
+    <path d="M215 245 V360 H425 V245"/>
+    <path d="M285 360 V295 H355 V360"/>
+  </g>
+  <text x="320" y="415" text-anchor="middle" font-family="system-ui, sans-serif" font-size="22" fill="#7b8791">sem foto</text>
+</svg>

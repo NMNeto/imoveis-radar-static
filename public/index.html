@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Busca Imóveis</title>
+  <meta name="description" content="Radar de imóveis com desconto da Caixa, Banco do Brasil, Santander e Itaú. Filtre por estado, cidade, bairro, preço, desconto, lucro estimado e financiamento.">
+  <meta name="theme-color" content="#0b6b57">
+  <meta property="og:title" content="Busca Imóveis">
+  <meta property="og:description" content="Radar de imóveis com desconto da Caixa, Banco do Brasil, Santander e Itaú.">
+  <meta property="og:type" content="website">
+  <link rel="stylesheet" href="static/vendor/leaflet.css">
+  <link rel="stylesheet" href="static/vendor/MarkerCluster.css">
+  <link rel="stylesheet" href="static/vendor/MarkerCluster.Default.css">
+  <link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <h1>Busca Imóveis</h1>
+      <span id="data-meta" class="muted">Carregando…</span>
+    </div>
+    <div class="actions">
+      <span id="update-status" class="status"></span>
+      <button id="btn-update" class="btn primary" type="button">Atualizar agora</button>
+      <a id="btn-download" class="btn" href="data/busca_imoveis.csv" download>Baixar CSV</a>
+      <button id="btn-share" class="btn" type="button">Compartilhar</button>
+      <button id="btn-config" class="btn" type="button">Configurações</button>
+    </div>
+  </header>
+
+  <section class="filters" aria-label="Filtros">
+    <label>UF
+      <div data-combo id="combo-uf"></div>
+    </label>
+    <label>Cidade
+      <div data-combo id="combo-cidade"></div>
+    </label>
+    <label>Bairro
+      <div data-combo id="combo-bairro"></div>
+    </label>
+    <label>Fonte
+      <select id="f-fonte"></select>
+    </label>
+    <label>Preço máx. (R$)
+      <input id="f-preco-max" type="number" min="0" step="1000" inputmode="numeric" placeholder="Sem limite">
+    </label>
+    <label>Desconto mín. (%)
+      <input id="f-desconto-min" type="number" min="0" max="100" step="1" inputmode="numeric" placeholder="Sem mínimo">
+    </label>
+    <label>Lucro mín. (R$)
+      <input id="f-lucro-min" type="number" min="0" step="1000" inputmode="numeric" placeholder="Sem mínimo">
+    </label>
+    <label>Financiamento
+      <select id="f-financiamento">
+        <option value="all">Todos</option>
+        <option value="sim">Sim</option>
+        <option value="nao">Não</option>
+      </select>
+    </label>
+    <label>Modalidade
+      <select id="f-modalidade"></select>
+    </label>
+    <label class="grow">Buscar
+      <input id="f-q" type="search" placeholder="cidade, bairro, endereço, ID…">
+    </label>
+    <label class="check">
+      <input id="f-exclusoes" type="checkbox" checked> Aplicar exclusões
+    </label>
+    <button id="btn-reset" class="btn" type="button">Limpar</button>
+  </section>
+
+  <main>
+    <section class="list-panel">
+      <div class="list-head">
+        <span id="count" class="muted"></span>
+        <label class="sort">Ordenar
+          <select id="f-sort">
+            <option value="desconto_desc">Maior desconto</option>
+            <option value="lucro_desc">Maior lucro R$</option>
+            <option value="lucro_pct_desc">Maior lucro %</option>
+            <option value="preco_asc">Menor preço</option>
+            <option value="preco_desc">Maior preço</option>
+            <option value="endereco">Endereço</option>
+          </select>
+        </label>
+      </div>
+      <div id="cards" class="cards"></div>
+      <button id="btn-more" class="btn more hidden" type="button">Carregar mais</button>
+      <div id="empty" class="empty hidden">Nenhum imóvel encontrado com esses filtros.</div>
+    </section>
+
+    <aside class="map-panel">
+      <div id="map"></div>
+      <div class="map-foot">
+        <span id="geo-status" class="muted"></span>
+        <div class="map-actions">
+          <button id="btn-map-filter" class="btn small" type="button">Filtrar pelo mapa</button>
+          <button id="btn-map-clear" class="btn small hidden" type="button">Limpar área</button>
+          <button id="btn-geocode" class="btn small" type="button">Geocodificar resultados</button>
+          <button id="btn-geocode-all" class="btn small" type="button">Geocodificar tudo</button>
+          <button id="btn-geocode-cancel" class="btn small danger hidden" type="button">Cancelar</button>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <dialog id="config-dialog">
+    <form method="dialog" class="config-form" id="config-form">
+      <div class="dialog-head">
+        <h2>Configurações</h2>
+        <button class="btn small" id="btn-config-close" type="button">Fechar</button>
+      </div>
+      <p class="muted">
+        Este site é estático: as alterações abaixo ficam salvas neste navegador.
+        Use <strong>Exportar</strong> para baixar um arquivo e aplicar a configuração
+        ao repositório, onde o script Python a incorpora na próxima atualização.
+        Use <code>all</code> como curinga em Bairro/Endereço.
+      </p>
+      <h3 class="config-title">Custos e premissas</h3>
+      <div class="config-grid config-costs">
+        <label>Taxa Corretagem Venda (%)
+          <input id="cfg-taxa-venda" type="number" min="0" max="100" step="0.01" inputmode="decimal">
+        </label>
+        <label>Dívidas (Condomínio e IPTU)
+          <div class="input-group">
+            <select id="cfg-custo-modo">
+              <option value="fixo">R$ fixo</option>
+              <option value="percentual">% do valor</option>
+            </select>
+            <input id="cfg-custo-fixo" type="number" min="0" step="0.01" inputmode="decimal">
+          </div>
+        </label>
+        <label>Taxa Leilão (%)
+          <input id="cfg-fator-preco" type="number" min="0" step="0.01" inputmode="decimal">
+        </label>
+      </div>
+      <p class="muted config-hint">
+        A Taxa Leilão é o prêmio aplicado ao preço em modalidades não online
+        (5% vira fator 1,05). Dívidas em % são calculadas sobre o valor de avaliação.
+      </p>
+      <h3 class="config-title">Listas</h3>
+      <div class="config-grid">
+        <label>IDs excluídos (um por linha)
+          <textarea id="cfg-ids" spellcheck="false" rows="8"></textarea>
+        </label>
+        <label>Locais excluídos (Cidade,Bairro,Endereço por linha)
+          <textarea id="cfg-locations" spellcheck="false" rows="8"></textarea>
+        </label>
+        <label>Valores de venda ajustados (ID,Valor por linha)
+          <textarea id="cfg-market" spellcheck="false" rows="8"></textarea>
+        </label>
+      </div>
+      <div class="dialog-actions">
+        <span id="config-msg" class="muted"></span>
+        <button id="btn-config-reset" class="btn" type="button">Limpar ajustes locais</button>
+        <button id="btn-config-export" class="btn" type="button">Exportar</button>
+        <button id="btn-config-save" class="btn primary" value="default" type="submit">Salvar neste navegador</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="static/config.js"></script>
+  <script src="static/vendor/leaflet.js"></script>
+  <script src="static/vendor/leaflet.markercluster.js"></script>
+  <script src="static/app.js"></script>
+</body>
+</html>

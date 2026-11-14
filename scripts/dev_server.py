@@ -1,0 +1,156 @@
+#!/usr/bin/env python3
+"""Servidor local de pré-visualização do site estático.
+
+Serve ``public/`` e implementa o mesmo ``/api/image`` da Pages Function para
+que as imagens de BB/Santander/Itaú apareçam durante os testes e screenshots.
+Não faz parte do deploy.
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import logging
+import os
+import tempfile
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from urllib.parse import parse_qs, urlparse
+
+import requests
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+ALLOWED_HOSTS = {
+    "shi.santander.com.br",
+    "www.seuimovelbb.com.br",
+    "cdn.frazaoleiloes.com.br",
+    "imagens.portalzuk.com.br",
+    "cdn1.megaleiloes.com.br",
+    "cdn-biasi.blueintra.com",
+    "armazupleilaovipprd.blob.core.windows.net",
+    "www.itau.com.br",
+}
+MAX_BYTES = 20 * 1024 * 1024
+CACHE_DIR = PROJECT_ROOT / "data" / "logs" / "image-cache"
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36"
+    ),
+    "Accept": "image/avif,image/webp,image/png,image/jpeg,image/*",
+    "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+}
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+logger = logging.getLogger("dev-server")
+
+
+class Handler(SimpleHTTPRequestHandler):
+    def __init__(self, *args, directory: str | None = None, **kwargs):
+        super().__init__(*args, directory=directory, **kwargs)
+
+    def do_GET(self):  # noqa: N802
+        parsed = urlparse(self.path)
+        if parsed.path == "/api/image":
+            self._serve_image(parse_qs(parsed.query))
+            return
+        super().do_GET()
+
+    def _serve_image(self, query):
+        values = query.get("url") or []
+        if not values:
+            self._json(400, {"ok": False, "error": "Parâmetro url obrigatório"})
+            return
+        target = values[0]
+        parsed = urlparse(target)
+        if (
+            parsed.scheme != "https"
+            or parsed.hostname not in ALLOWED_HOSTS
+            or (parsed.port not in (None, 443))
+        ):
+            self._json(400, {"ok": False, "error": "URL de imagem não permitida"})
+            return
+        key = hashlib.sha256(target.encode("utf-8")).hexdigest()
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        for candidate in CACHE_DIR.glob(f"{key}.*"):
+            self._send_file(candidate)
+            return
+        try:
+            response = requests.get(target, headers=HEADERS, timeout=25, stream=True)
+            response.raise_for_status()
+            content_type = (
+                (response.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+            )
+            if not content_type.startswith("image/"):
+                raise ValueError(f"conteúdo não é imagem: {content_type!r}")
+            extension = {
+                "image/jpeg": ".jpg",
+                "image/png": ".png",
+                "image/webp": ".webp",
+                "image/gif": ".gif",
+            }.get(content_type, ".img")
+            with tempfile.NamedTemporaryFile(
+                "wb", dir=CACHE_DIR, delete=False
+            ) as handle:
+                size = 0
+                for chunk in response.iter_content(64 * 1024):
+                    size += len(chunk)
+                    if size > MAX_BYTES:
+                        raise ValueError("imagem maior que 20 MB")
+                    handle.write(chunk)
+                temp_name = handle.name
+            path = CACHE_DIR / f"{key}{extension}"
+            os.replace(temp_name, path)
+            self._send_file(path)
+        except Exception as exc:
+            logger.warning("Falha na imagem %s: %s", target, exc)
+            self._json(502, {"ok": False, "error": "Não foi possível carregar a imagem"})
+
+    def _send_file(self, path: Path):
+        content_type = {
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".png": "image/png",
+            ".webp": "image/webp",
+            ".gif": "image/gif",
+        }.get(path.suffix.lower(), "application/octet-stream")
+        data = path.read_bytes()
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "public, max-age=604800")
+        self.end_headers()
+        self.wfile.write(data)
+
+    def _json(self, status: int, payload: dict):
+        import json
+
+        data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def log_message(self, format, *args):  # noqa: A002
+        logger.info("%s - %s", self.address_string(), format % args)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--port", type=int, default=8080)
+    parser.add_argument("--public", type=Path, default=PROJECT_ROOT / "public")
+    args = parser.parse_args()
+    handler = lambda *a, **kw: Handler(*a, directory=str(args.public), **kw)  # noqa: E731
+    server = ThreadingHTTPServer((args.host, args.port), handler)
+    logger.info("Servindo %s em http://%s:%s", args.public, args.host, args.port)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
