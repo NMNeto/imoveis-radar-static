@@ -82,6 +82,7 @@ const state = {
   bbox: "",
   firstFetch: true,
   facetsApplying: false,
+  dataLoaded: false,
 };
 
 const money = new Intl.NumberFormat("pt-BR", {
@@ -125,6 +126,13 @@ function escapeHtml(value) {
     '"': "&quot;",
     "'": "&#39;",
   }[ch]));
+}
+
+function shortText(value, limit = 160) {
+  const text = String(value ?? "").replace(/\s+/g, " ").trim();
+  if (!text) return "";
+  if (text.length <= limit) return text;
+  return `${text.slice(0, limit).trimEnd()}…`;
 }
 
 function safeUrl(value) {
@@ -268,13 +276,147 @@ async function copyShareLink() {
   }
 }
 
-function showToast(message, isError = false) {
+function hideToastAction() {
+  const action = $("#toast-action");
+  if (!action) return;
+  action.classList.add("hidden");
+  action.textContent = "";
+  action.onclick = null;
+}
+
+function hideToast() {
   const toast = $("#toast");
-  toast.textContent = message;
-  toast.classList.toggle("error", isError);
+  if (!toast) return;
+  clearTimeout(showToast.timer);
+  toast.classList.remove("show", "actionable");
+  hideToastAction();
+}
+
+function showToast(message, options = false) {
+  const toast = $("#toast");
+  const text = $("#toast-message");
+  const action = $("#toast-action");
+  if (!toast || !text) return;
+  const config = typeof options === "boolean" ? { isError: options } : (options || {});
+  text.textContent = message;
+  toast.classList.toggle("error", Boolean(config.isError));
+  toast.classList.remove("actionable");
+  hideToastAction();
+  if (config.actionLabel && typeof config.onAction === "function") {
+    action.textContent = config.actionLabel;
+    action.classList.remove("hidden");
+    action.onclick = () => {
+      hideToast();
+      config.onAction();
+    };
+    toast.classList.add("actionable");
+  }
   toast.classList.add("show");
   clearTimeout(showToast.timer);
-  showToast.timer = setTimeout(() => toast.classList.remove("show"), 3500);
+  const duration = Number(config.duration) || 3500;
+  showToast.timer = setTimeout(() => {
+    toast.classList.remove("show", "actionable");
+    hideToastAction();
+  }, duration);
+}
+
+/* --------------------------------------------------------------------------
+ * Tooltips acessíveis (hover, foco e toque) com posicionamento inteligente.
+ * ------------------------------------------------------------------------ */
+
+const tooltipState = { trigger: null, pinned: false };
+
+function tooltipBubble() {
+  return $("#tooltip-bubble");
+}
+
+function positionTooltip(trigger) {
+  const bubble = tooltipBubble();
+  if (!bubble || bubble.hidden) return;
+  const rect = trigger.getBoundingClientRect();
+  const margin = 8;
+  bubble.style.left = "0px";
+  bubble.style.top = "0px";
+  const box = bubble.getBoundingClientRect();
+  let left = rect.left + rect.width / 2 - box.width / 2;
+  left = Math.max(margin, Math.min(left, window.innerWidth - box.width - margin));
+  let top = rect.bottom + margin;
+  if (top + box.height > window.innerHeight - margin) {
+    top = rect.top - box.height - margin;
+  }
+  top = Math.max(margin, Math.min(top, window.innerHeight - box.height - margin));
+  bubble.style.left = `${Math.round(left)}px`;
+  bubble.style.top = `${Math.round(top)}px`;
+}
+
+function showTooltip(trigger, pinned = false) {
+  const bubble = tooltipBubble();
+  const id = trigger?.dataset?.tooltipId;
+  const source = id ? document.getElementById(id) : null;
+  if (!bubble || !source) return;
+  if (tooltipState.trigger !== trigger) tooltipState.pinned = false;
+  tooltipState.trigger = trigger;
+  tooltipState.pinned = pinned;
+  bubble.textContent = source.textContent.trim();
+  bubble.hidden = false;
+  trigger.setAttribute("aria-expanded", "true");
+  positionTooltip(trigger);
+}
+
+function hideTooltip() {
+  const bubble = tooltipBubble();
+  if (bubble) {
+    bubble.hidden = true;
+    bubble.textContent = "";
+  }
+  if (tooltipState.trigger) tooltipState.trigger.removeAttribute("aria-expanded");
+  tooltipState.trigger = null;
+  tooltipState.pinned = false;
+}
+
+function bindTooltips() {
+  document.addEventListener("pointerover", (event) => {
+    const trigger = event.target.closest("[data-tooltip-id]");
+    if (!trigger || trigger === tooltipState.trigger) return;
+    showTooltip(trigger);
+  });
+  document.addEventListener("pointerout", (event) => {
+    const trigger = event.target.closest("[data-tooltip-id]");
+    if (!trigger || tooltipState.pinned) return;
+    if (!trigger.contains(event.relatedTarget)) hideTooltip();
+  });
+  document.addEventListener("focusin", (event) => {
+    const trigger = event.target.closest("[data-tooltip-id]");
+    if (trigger) showTooltip(trigger);
+  });
+  document.addEventListener("focusout", (event) => {
+    const trigger = event.target.closest("[data-tooltip-id]");
+    if (!trigger || tooltipState.pinned) return;
+    hideTooltip();
+  });
+  document.addEventListener("click", (event) => {
+    const trigger = event.target.closest("[data-tooltip-id]");
+    if (trigger) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (tooltipState.trigger === trigger && tooltipState.pinned) hideTooltip();
+      else showTooltip(trigger, true);
+      return;
+    }
+    if (tooltipState.trigger && tooltipState.pinned) hideTooltip();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || !tooltipState.trigger) return;
+    const trigger = tooltipState.trigger;
+    hideTooltip();
+    trigger.blur?.();
+  });
+  window.addEventListener("resize", () => {
+    if (tooltipState.trigger) positionTooltip(tooltipState.trigger);
+  }, { passive: true });
+  window.addEventListener("scroll", () => {
+    if (tooltipState.trigger) positionTooltip(tooltipState.trigger);
+  }, { passive: true, capture: true });
 }
 
 function noticeSeen() {
@@ -1059,17 +1201,45 @@ function setDataStatus(text) {
   if (element) element.textContent = text;
 }
 
+function setLoadingStatus(text) {
+  const element = $("#loading-status");
+  if (!element) return;
+  element.classList.remove("fade-out");
+  element.textContent = text;
+}
+
+function finishLoading() {
+  document.body.classList.remove("is-loading");
+  const status = $("#loading-status");
+  if (status) {
+    status.classList.add("fade-out");
+    setTimeout(() => {
+      if (!status.classList.contains("fade-out")) return;
+      status.textContent = "";
+      status.classList.remove("fade-out");
+    }, 500);
+  }
+  $("#cards")?.setAttribute("aria-busy", "false");
+}
+
+async function nextPaint() {
+  await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+}
+
 async function loadItems(chunks) {
   const paths = (chunks || []).map((name) =>
     name.startsWith("data/") ? name : `${DATA_BASE}${name}`
   );
   if (!paths.length) throw new Error("manifest.json não lista arquivos de dados");
   const payloads = await Promise.all(paths.map(getJSON));
+  setLoadingStatus("Processando registros…");
+  await nextPaint();
   state.baseItems = payloads.flat();
 }
 
 async function loadMeta() {
-  setDataStatus("Carregando dados…");
+  setDataStatus("");
+  setLoadingStatus("Buscando imóveis…");
   const manifest = await getJSON(`${DATA_BASE}manifest.json`);
   state.manifest = manifest;
   const [meta, update, remoteConfig] = await Promise.all([
@@ -1085,8 +1255,12 @@ async function loadMeta() {
     exclude_locations: [],
     market_values: {},
   };
+  setLoadingStatus("Buscando imóveis…");
   await loadItems(manifest.chunks || []);
+  setLoadingStatus("Processando registros…");
+  await nextPaint();
   recomputeAllItems();
+  state.dataLoaded = true;
 
   if (!state.initialized) {
     state.filters = filtersFromURL();
@@ -1119,7 +1293,7 @@ function updateHeader() {
 }
 
 function fetchProperties() {
-  if (!state.allItems.length) return;
+  if (!state.allItems.length && !state.dataLoaded) return;
   state.filters = readFilters();
   syncURL(state.filters);
   const filtered = filterItems(
@@ -1155,28 +1329,36 @@ function updateCount() {
 function cardHtml(item) {
   const image = imageSrc(item);
   const link = safeUrl(item.link);
-  const adjusted = item.ajustado
-    ? `<span class="badge adjusted" title="Valor de venda ajustado manualmente">ajustado</span>`
-    : "";
   const excluded = item.excluido
     ? `<span class="badge excluded-badge" title="${escapeHtml(item.motivo_exclusao || "Excluído")}">excluído</span>`
     : "";
   const financing = /^sim$/i.test(item.financiamento)
-    ? `<span class="tag fin">Financiável</span>`
-    : `<span class="tag">Sem financiamento</span>`;
+    ? `<span class="status-badge fin">🟢 Financiável</span>`
+    : `<span class="status-badge no-fin">🔴 Sem financiamento</span>`;
+  const needsValue = item.sem_preco
+    ? `<span class="status-badge needs-value">🟡 Requer ajuste de valor</span>`
+    : "";
+  const adjusted = item.ajustado
+    ? `<span class="status-badge custom-value">✏️ Valor personalizado</span>`
+    : "";
   const profitClass = item.lucro != null && item.lucro < 0 ? "negative" : "";
-  const valuation = item.valor_ajustado == null
-    ? `<span class="muted">sem avaliação</span>`
-    : `<span class="muted" title="${item.ajustado ? "Valor de venda ajustado" : "Valor de avaliação"}">${formatBRL(item.valor_ajustado)}</span>`;
+  const bankLabel = sourceLabel(item);
+  const street = shortText(item.endereco, 160);
+  const place = shortText(`${item.bairro || ""} — ${item.cidade || ""}/${item.uf || ""}`, 90);
+  const valuation = item.valor_avaliacao == null
+    ? `<span class="muted valuation">Avaliação ${escapeHtml(bankLabel)}: sem avaliação</span>`
+    : `<span class="muted valuation" title="Valor de avaliação da fonte">Avaliação ${escapeHtml(bankLabel)}: ${formatBRL(item.valor_avaliacao)}</span>`;
+  const customValue = item.ajustado && item.valor_ajustado != null
+    ? `<div class="custom-value-line">Seu valor de venda: <strong>${formatBRL(item.valor_ajustado)}</strong></div>`
+    : "";
   const profit = item.lucro == null
-    ? `<div class="profit">Lucro não calculado (sem valor de avaliação)</div>`
-    : `<div class="profit ${profitClass}">Lucro est. ${formatBRL(item.lucro)} (${formatPct(item.lucro_pct)})</div>`;
+    ? `<div class="profit" title="Lucro não calculado por falta de valor de avaliação">Lucro não calculado (sem avaliação)</div>`
+    : `<div class="profit ${profitClass}" title="Lucro estimado ${formatBRL(item.lucro)} (${formatPct(item.lucro_pct)})">Lucro est. ${formatBRL(item.lucro)} (${formatPct(item.lucro_pct)})</div>`;
   return `
     <article class="card ${item.excluido ? "excluded" : ""}" data-id="${escapeHtml(item.id)}">
       <a class="thumb" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">
         ${image ? `<img src="${escapeHtml(image)}" alt="Imóvel ${escapeHtml(item.id_fonte || item.id)}" loading="lazy" referrerpolicy="no-referrer" data-fallback="${IMAGE_PLACEHOLDER}">` : `<img src="${IMAGE_PLACEHOLDER}" alt="">`}
         <span class="badge">${discountLabel(item)}</span>
-        ${adjusted}
         ${excluded}
       </a>
       <div class="card-body">
@@ -1184,12 +1366,18 @@ function cardHtml(item) {
           <strong>${priceLabel(item)}</strong>
           ${valuation}
         </div>
+        ${customValue}
         ${profit}
-        <div class="addr">${escapeHtml(item.endereco)}<br>${escapeHtml(item.bairro)} — ${escapeHtml(item.cidade)}/${escapeHtml(item.uf)}</div>
+        <div class="addr">
+          <span class="addr-street" title="${escapeHtml(street)}">${escapeHtml(street)}</span>
+          <span class="addr-place" title="${escapeHtml(place)}">${escapeHtml(place)}</span>
+        </div>
         <div class="tags">
           ${sourceBadge(item)}
           <span class="tag">${escapeHtml(item.modalidade || "—")}</span>
           ${financing}
+          ${needsValue}
+          ${adjusted}
           <span class="tag">ID ${escapeHtml(item.id_fonte || item.id)}</span>
         </div>
         <div class="card-actions">
@@ -1202,11 +1390,89 @@ function cardHtml(item) {
   `;
 }
 
+function emptyReason() {
+  const filters = state.filters || DEFAULTS;
+  if (Number(filters.desconto_min) > 0) {
+    return `O filtro “Desconto mín.” está em ${formatPct(filters.desconto_min)} e pode estar restringindo demais. Tente reduzi-lo.`;
+  }
+  if (Number(filters.lucro_min) > 0) {
+    return `O filtro “Lucro mín.” está em ${formatBRL(filters.lucro_min)} e pode estar restringindo demais. Tente reduzi-lo.`;
+  }
+  if (Number(filters.preco_max) > 0) {
+    return `O “Preço máx.” de ${formatBRL(filters.preco_max)} pode estar limitando. Tente aumentá-lo.`;
+  }
+  if (filters.q) {
+    return `A busca por “${filters.q}” não retornou imóveis. Tente outro termo.`;
+  }
+  if (filters.uf !== "all" || filters.cidade !== "all" || filters.bairro !== "all") {
+    return "A localização selecionada pode ser restritiva. Tente uma cidade, bairro ou UF mais ampla.";
+  }
+  if (filters.financiamento !== "all") {
+    return "O filtro de financiamento pode estar restringindo. Tente a opção “Todos”.";
+  }
+  if (filters.modalidade !== "all") {
+    return "A modalidade selecionada pode estar restringindo. Tente a opção “Todas”.";
+  }
+  if (filters.fonte !== "all") {
+    return "A fonte selecionada pode estar restringindo. Tente a opção “Todas”.";
+  }
+  if (filters.bbox) {
+    return "A área visível do mapa pode não ter imóveis. Use “Limpar área” ou mova o mapa.";
+  }
+  if (filters.aplicar_exclusoes) {
+    return "As exclusões locais podem estar removendo os resultados. Desative “Aplicar exclusões” para conferir.";
+  }
+  return "Nenhum imóvel atende à combinação atual de filtros.";
+}
+
+function renderEmptyState() {
+  const empty = $("#empty");
+  if (!empty) return;
+  $("#empty-title").textContent = "Nenhum imóvel encontrado";
+  $("#empty-reason").textContent = emptyReason();
+  $("#empty .empty-actions")?.classList.remove("hidden");
+  $("#empty").classList.remove("hidden");
+}
+
+function renderEmptyError(message) {
+  const empty = $("#empty");
+  if (!empty) return;
+  $("#empty-title").textContent = "Não foi possível carregar os dados";
+  $("#empty-reason").textContent = message;
+  $("#empty .empty-actions")?.classList.add("hidden");
+  empty.classList.remove("hidden");
+}
+
+function resetAllFilters() {
+  state.filters = { ...DEFAULTS };
+  state.mapFilter = false;
+  state.bbox = "";
+  updateMapFilterUI();
+  applyFiltersToInputs(state.filters);
+  scheduleFetch();
+  scheduleFacets();
+}
+
+function increasePriceMax() {
+  const input = $("#f-preco-max");
+  if (!input) return;
+  const current = numberOr(input.value, 0);
+  const base = current > 0 ? current : Number(state.meta?.preco_max) || 500000;
+  const next = Math.ceil(base * 1.2);
+  input.value = String(next);
+  scheduleFetch();
+  scheduleFacets();
+  showToast(`Preço máximo aumentado para ${formatBRL(next)}.`);
+}
+
 function renderCards() {
   const container = $("#cards");
   const slice = state.items.slice(0, state.visible);
   container.innerHTML = slice.map(cardHtml).join("");
-  $("#empty").classList.toggle("hidden", state.items.length > 0);
+  container.setAttribute("aria-busy", "false");
+  const isEmpty = state.dataLoaded && state.items.length === 0;
+  if (isEmpty) renderEmptyState();
+  else $("#empty").classList.add("hidden");
   $("#btn-more").classList.toggle("hidden", state.visible >= state.items.length);
 }
 
@@ -1376,42 +1642,125 @@ function parseMoneyInput(value) {
   return Number.isFinite(number) ? number : null;
 }
 
-function adjustValue(id) {
-  const item = state.allItems.find((entry) => entry.id === id);
-  if (!item) return;
-  const current = item.valor_ajustado ?? item.valor_avaliacao ?? item.preco ?? 0;
-  const answer = prompt(
-    `Valor de venda aproximado para o imóvel ${id}.\nDeixe vazio para remover o ajuste.`,
-    String(Math.round(current))
-  );
-  if (answer === null) return;
-  const trimmed = answer.trim();
-  if (!trimmed) {
-    state.local.marketValues[id] = null;
-  } else {
-    const value = parseMoneyInput(trimmed);
-    if (value === null || value <= 0) {
-      showToast("Valor inválido.", true);
-      return;
-    }
-    state.local.marketValues[id] = round2(value);
-  }
-  saveLocalOverrides();
-  recomputeAllItems();
-  refreshFacets();
-  fetchProperties();
-  showToast(trimmed ? "Valor ajustado neste navegador." : "Ajuste removido neste navegador.");
+function formattedInputValue(value) {
+  return Number(value).toLocaleString("pt-BR", { maximumFractionDigits: 0 });
 }
 
-function excludeItem(id) {
-  if (!confirm(`Excluir o imóvel ${id} da lista neste navegador?`)) return;
+let adjustTargetId = null;
+
+function adjustValue(id) {
+  const item = state.allItems.find((entry) => entry.id === id);
+  const dialog = $("#adjust-dialog");
+  if (!item || !dialog) return;
+  adjustTargetId = id;
+  $("#adjust-price").textContent = priceLabel(item);
+  $("#adjust-valuation-label").textContent = `Avaliação ${sourceLabel(item)}`;
+  $("#adjust-valuation").textContent = item.valor_avaliacao == null
+    ? "sem avaliação"
+    : formatBRL(item.valor_avaliacao);
+  const input = $("#adjust-value");
+  input.value = item.ajustado && item.valor_ajustado != null
+    ? formattedInputValue(item.valor_ajustado)
+    : "";
+  $("#adjust-error").textContent = "";
+  $("#adjust-error").hidden = true;
+  $("#btn-adjust-remove").classList.toggle("hidden", !item.ajustado);
+  dialog.showModal();
+  requestAnimationFrame(() => {
+    input.focus();
+    input.select();
+  });
+}
+
+function closeAdjustDialog() {
+  adjustTargetId = null;
+  const dialog = $("#adjust-dialog");
+  if (dialog?.open) dialog.close();
+}
+
+function saveAdjustment(event) {
+  event.preventDefault();
+  if (!adjustTargetId) return;
+  const input = $("#adjust-value");
+  const error = $("#adjust-error");
+  const value = parseMoneyInput(input.value);
+  if (value === null || value <= 0) {
+    error.textContent = "Informe um valor maior que zero.";
+    error.hidden = false;
+    input.focus();
+    return;
+  }
+  state.local.marketValues[adjustTargetId] = round2(value);
+  saveLocalOverrides();
+  recomputeAllItems();
+  adjustTargetId = null;
+  $("#adjust-dialog").close();
+  refreshFacets();
+  fetchProperties();
+  showToast("Valor ajustado neste navegador.");
+}
+
+function removeAdjustment() {
+  if (!adjustTargetId) return;
+  state.local.marketValues[adjustTargetId] = null;
+  saveLocalOverrides();
+  recomputeAllItems();
+  adjustTargetId = null;
+  $("#adjust-dialog").close();
+  refreshFacets();
+  fetchProperties();
+  showToast("Ajuste removido neste navegador.");
+}
+
+let confirmResolver = null;
+
+function askConfirm(message, confirmLabel = "Sim") {
+  const dialog = $("#confirm-dialog");
+  if (!dialog || typeof dialog.showModal !== "function") {
+    return Promise.resolve(window.confirm(message));
+  }
+  $("#confirm-message").textContent = message;
+  $("#btn-confirm-ok").textContent = confirmLabel;
+  return new Promise((resolve) => {
+    confirmResolver = resolve;
+    dialog.showModal();
+  });
+}
+
+function resolveConfirm(value) {
+  const dialog = $("#confirm-dialog");
+  const resolver = confirmResolver;
+  confirmResolver = null;
+  if (dialog?.open) dialog.close();
+  if (resolver) resolver(value);
+}
+
+async function excludeItem(id) {
+  const confirmed = await askConfirm("Remover este imóvel da sua lista local?", "Sim");
+  if (!confirmed) return;
+  const hadExcluded = Boolean(state.local.excludedIds[id]);
+  const hadUnexcluded = Boolean(state.local.unexcludedIds[id]);
   state.local.excludedIds[id] = true;
   delete state.local.unexcludedIds[id];
   saveLocalOverrides();
   recomputeAllItems();
   refreshFacets();
   fetchProperties();
-  showToast("Imóvel excluído neste navegador.");
+  showToast("Imóvel removido", {
+    actionLabel: "Desfazer",
+    duration: 5000,
+    onAction: () => {
+      if (hadExcluded) state.local.excludedIds[id] = true;
+      else delete state.local.excludedIds[id];
+      if (hadUnexcluded) state.local.unexcludedIds[id] = true;
+      else delete state.local.unexcludedIds[id];
+      saveLocalOverrides();
+      recomputeAllItems();
+      refreshFacets();
+      fetchProperties();
+      showToast("Exclusão desfeita.");
+    },
+  });
 }
 
 /* --------------------------------------------------------------------------
@@ -1568,7 +1917,7 @@ async function saveConfig(event) {
   saveLocalOverrides();
   recomputeAllItems();
   $("#config-dialog").close();
-  showToast("Configuração salva neste navegador.");
+  showToast("Configurações salvas localmente");
   refreshFacets();
   fetchProperties();
 }
@@ -1684,15 +2033,9 @@ function bindEvents() {
     scheduleFetch();
     scheduleFacets();
   });
-  $("#btn-reset").addEventListener("click", () => {
-    state.filters = { ...DEFAULTS };
-    state.mapFilter = false;
-    state.bbox = "";
-    updateMapFilterUI();
-    applyFiltersToInputs(state.filters);
-    scheduleFetch();
-    scheduleFacets();
-  });
+  $("#btn-reset").addEventListener("click", resetAllFilters);
+  $("#btn-empty-reset").addEventListener("click", resetAllFilters);
+  $("#btn-empty-price").addEventListener("click", increasePriceMax);
   $("#btn-map-filter").addEventListener("click", () => toggleMapFilter(!state.mapFilter));
   $("#btn-map-clear").addEventListener("click", () => toggleMapFilter(false));
   $("#btn-more").addEventListener("click", () => {
@@ -1724,9 +2067,35 @@ function bindEvents() {
   $("#btn-config-reset").addEventListener("click", resetConfig);
   $("#cfg-custo-modo").addEventListener("change", syncCustoFixoInput);
   $("#config-form").addEventListener("submit", saveConfig);
+  $("#adjust-form").addEventListener("submit", saveAdjustment);
+  $("#btn-adjust-remove").addEventListener("click", removeAdjustment);
+  $("#btn-adjust-cancel").addEventListener("click", closeAdjustDialog);
+  $("#adjust-dialog").addEventListener("close", () => {
+    adjustTargetId = null;
+  });
+  $("#adjust-dialog").addEventListener("click", (event) => {
+    if (event.target === $("#adjust-dialog")) closeAdjustDialog();
+  });
+  $("#btn-confirm-ok").addEventListener("click", () => resolveConfirm(true));
+  $("#btn-confirm-cancel").addEventListener("click", () => resolveConfirm(false));
+  $("#confirm-dialog").addEventListener("cancel", (event) => {
+    event.preventDefault();
+    resolveConfirm(false);
+  });
+  $("#confirm-dialog").addEventListener("close", () => {
+    if (confirmResolver) {
+      const resolver = confirmResolver;
+      confirmResolver = null;
+      resolver(false);
+    }
+  });
+  $("#confirm-dialog").addEventListener("click", (event) => {
+    if (event.target === $("#confirm-dialog")) resolveConfirm(false);
+  });
 }
 
 async function init() {
+  bindTooltips();
   initMap();
   state.mapFilter = true;
   state.bbox = currentMapBbox();
@@ -1740,9 +2109,11 @@ async function init() {
     await fetchProperties();
   } catch (error) {
     setDataStatus("Falha ao carregar os dados.");
-    $("#empty").classList.remove("hidden");
-    $("#empty").textContent = `Não foi possível carregar os dados: ${error.message}`;
+    $("#cards").innerHTML = "";
+    renderEmptyError(`Não foi possível carregar os dados: ${error.message}`);
     showToast(error.message, true);
+  } finally {
+    finishLoading();
   }
 }
 
