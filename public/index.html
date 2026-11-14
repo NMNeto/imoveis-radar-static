@@ -15,11 +15,12 @@
   <link rel="stylesheet" href="static/vendor/MarkerCluster.Default.css">
   <link rel="stylesheet" href="static/style.css">
 </head>
-<body>
+<body class="is-loading">
   <header class="topbar">
     <div class="brand">
       <h1>Busca Imóveis</h1>
-      <span id="data-meta" class="muted">Carregando…</span>
+      <span id="data-meta" class="muted"></span>
+      <span id="loading-status" class="loading-status" role="status" aria-live="polite"></span>
     </div>
     <div class="actions">
       <span id="update-status" class="status"></span>
@@ -48,10 +49,16 @@
     <label>Preço máx. (R$)
       <input id="f-preco-max" type="number" min="0" step="1000" inputmode="numeric" placeholder="Sem limite">
     </label>
-    <label>Desconto mín. (%)
+    <label>
+      <span class="field-label">Desconto mín. (%)
+        <button class="info-btn" type="button" aria-label="Ajuda sobre desconto mínimo" aria-describedby="tip-desconto-min" data-tooltip-id="tip-desconto-min">ℹ️</button>
+      </span>
       <input id="f-desconto-min" type="number" min="0" max="100" step="1" inputmode="numeric" placeholder="Sem mínimo">
     </label>
-    <label>Lucro mín. (R$)
+    <label>
+      <span class="field-label">Lucro mín. (R$)
+        <button class="info-btn" type="button" aria-label="Ajuda sobre lucro mínimo" aria-describedby="tip-lucro-min" data-tooltip-id="tip-lucro-min">ℹ️</button>
+      </span>
       <input id="f-lucro-min" type="number" min="0" step="1000" inputmode="numeric" placeholder="Sem mínimo">
     </label>
     <label>Financiamento
@@ -71,6 +78,19 @@
       <input id="f-exclusoes" type="checkbox" checked> Aplicar exclusões
     </label>
     <button id="btn-reset" class="btn" type="button">Limpar</button>
+    <div id="filters-skeleton" class="filters-skeleton" aria-hidden="true">
+      <div class="skeleton-field"><span class="skeleton-bar skeleton-label"></span><span class="skeleton-bar skeleton-input"></span></div>
+      <div class="skeleton-field"><span class="skeleton-bar skeleton-label"></span><span class="skeleton-bar skeleton-input"></span></div>
+      <div class="skeleton-field"><span class="skeleton-bar skeleton-label"></span><span class="skeleton-bar skeleton-input"></span></div>
+      <div class="skeleton-field"><span class="skeleton-bar skeleton-label"></span><span class="skeleton-bar skeleton-input"></span></div>
+      <div class="skeleton-field"><span class="skeleton-bar skeleton-label"></span><span class="skeleton-bar skeleton-input"></span></div>
+      <div class="skeleton-field"><span class="skeleton-bar skeleton-label"></span><span class="skeleton-bar skeleton-input"></span></div>
+      <div class="skeleton-field"><span class="skeleton-bar skeleton-label"></span><span class="skeleton-bar skeleton-input"></span></div>
+      <div class="skeleton-field"><span class="skeleton-bar skeleton-label"></span><span class="skeleton-bar skeleton-input"></span></div>
+      <div class="skeleton-field"><span class="skeleton-bar skeleton-label"></span><span class="skeleton-bar skeleton-input"></span></div>
+      <div class="skeleton-field"><span class="skeleton-bar skeleton-label"></span><span class="skeleton-bar skeleton-input"></span></div>
+      <div class="skeleton-field"><span class="skeleton-bar skeleton-label"></span><span class="skeleton-bar skeleton-input"></span></div>
+    </div>
   </section>
 
   <main>
@@ -88,15 +108,32 @@
           </select>
         </label>
       </div>
-      <div id="cards" class="cards"></div>
+      <div id="cards" class="cards" aria-busy="true">
+        <article class="skeleton-card" aria-hidden="true"><div class="skeleton-bar skeleton-thumb"></div><div class="skeleton-body"><span class="skeleton-bar skeleton-line w70"></span><span class="skeleton-bar skeleton-line w40"></span><span class="skeleton-bar skeleton-line"></span><span class="skeleton-bar skeleton-line w60"></span><span class="skeleton-bar skeleton-pill"></span></div></article>
+        <article class="skeleton-card" aria-hidden="true"><div class="skeleton-bar skeleton-thumb"></div><div class="skeleton-body"><span class="skeleton-bar skeleton-line w70"></span><span class="skeleton-bar skeleton-line w40"></span><span class="skeleton-bar skeleton-line"></span><span class="skeleton-bar skeleton-line w60"></span><span class="skeleton-bar skeleton-pill"></span></div></article>
+        <article class="skeleton-card" aria-hidden="true"><div class="skeleton-bar skeleton-thumb"></div><div class="skeleton-body"><span class="skeleton-bar skeleton-line w70"></span><span class="skeleton-bar skeleton-line w40"></span><span class="skeleton-bar skeleton-line"></span><span class="skeleton-bar skeleton-line w60"></span><span class="skeleton-bar skeleton-pill"></span></div></article>
+        <article class="skeleton-card" aria-hidden="true"><div class="skeleton-bar skeleton-thumb"></div><div class="skeleton-body"><span class="skeleton-bar skeleton-line w70"></span><span class="skeleton-bar skeleton-line w40"></span><span class="skeleton-bar skeleton-line"></span><span class="skeleton-bar skeleton-line w60"></span><span class="skeleton-bar skeleton-pill"></span></div></article>
+        <article class="skeleton-card" aria-hidden="true"><div class="skeleton-bar skeleton-thumb"></div><div class="skeleton-body"><span class="skeleton-bar skeleton-line w70"></span><span class="skeleton-bar skeleton-line w40"></span><span class="skeleton-bar skeleton-line"></span><span class="skeleton-bar skeleton-line w60"></span><span class="skeleton-bar skeleton-pill"></span></div></article>
+        <article class="skeleton-card" aria-hidden="true"><div class="skeleton-bar skeleton-thumb"></div><div class="skeleton-body"><span class="skeleton-bar skeleton-line w70"></span><span class="skeleton-bar skeleton-line w40"></span><span class="skeleton-bar skeleton-line"></span><span class="skeleton-bar skeleton-line w60"></span><span class="skeleton-bar skeleton-pill"></span></div></article>
+      </div>
       <button id="btn-more" class="btn more hidden" type="button">Carregar mais</button>
-      <div id="empty" class="empty hidden">Nenhum imóvel encontrado com esses filtros.</div>
+      <div id="empty" class="empty hidden" role="status">
+        <p id="empty-title" class="empty-title">Nenhum imóvel encontrado</p>
+        <p id="empty-reason" class="empty-reason"></p>
+        <div class="empty-actions">
+          <button id="btn-empty-reset" class="btn primary" type="button">Limpar todos os filtros</button>
+          <button id="btn-empty-price" class="btn" type="button">Aumentar preço máximo</button>
+        </div>
+      </div>
     </section>
 
     <aside class="map-panel">
       <div id="map"></div>
       <div class="map-foot">
-        <span id="geo-status" class="muted"></span>
+        <span class="map-status">
+          <span id="geo-status" class="muted"></span>
+          <button class="info-btn" type="button" aria-label="Ajuda sobre geocodificação" aria-describedby="tip-geocodificar" data-tooltip-id="tip-geocodificar">ℹ️</button>
+        </span>
         <div class="map-actions">
           <button id="btn-map-filter" class="btn small" type="button">Filtrar pelo mapa</button>
           <button id="btn-map-clear" class="btn small hidden" type="button">Limpar área</button>
@@ -136,7 +173,10 @@
             <input id="cfg-custo-fixo" type="number" min="0" step="0.01" inputmode="decimal">
           </div>
         </label>
-        <label>Taxa Leilão (%)
+        <label>
+          <span class="field-label">Taxa Leilão (%)
+            <button class="info-btn" type="button" aria-label="Ajuda sobre a taxa de leilão" aria-describedby="tip-taxa-leilao" data-tooltip-id="tip-taxa-leilao">ℹ️</button>
+          </span>
           <input id="cfg-fator-preco" type="number" min="0" step="0.01" inputmode="decimal">
         </label>
       </div>
@@ -152,7 +192,10 @@
         <label>Locais excluídos (Cidade,Bairro,Endereço por linha)
           <textarea id="cfg-locations" spellcheck="false" rows="8"></textarea>
         </label>
-        <label>Valores de venda ajustados (ID,Valor por linha)
+        <label>
+          <span class="field-label">Valores de venda ajustados (ID,Valor por linha)
+            <button class="info-btn" type="button" aria-label="Ajuda sobre ajuste de valor" aria-describedby="tip-ajustar-valor" data-tooltip-id="tip-ajustar-valor">ℹ️</button>
+          </span>
           <textarea id="cfg-market" spellcheck="false" rows="8"></textarea>
         </label>
       </div>
@@ -213,7 +256,7 @@
       <h3>Como calculamos o desconto e o lucro</h3>
       <p>
         O cálculo usa o <strong>valor de avaliação</strong> da fonte ou, quando
-        você usa <strong>Ajustar valor</strong>, o valor de venda aproximado
+        você usa <strong>Ajustar valor</strong>, o valor de venda esperado
         informado por você. O preço é o valor pedido no anúncio.
       </p>
       <pre><code>desconto   = (valor_ajustado - preco) / valor_ajustado * 100
@@ -248,8 +291,8 @@ lucro %  = 28.000 / 200.000 * 100 = 14%</code></pre>
           preço é 0 no dataset. Sem preço e/ou sem avaliação não há como calcular
           desconto/lucro; o cartão continua visível para consulta.</li>
         <li><strong>Como simular:</strong> use <strong>Ajustar valor</strong> no
-          cartão para informar um valor de venda aproximado. O cartão ganha o
-          selo <strong>ajustado</strong> e os cálculos são refeitos neste navegador.</li>
+          cartão para informar o valor esperado de venda. O cartão ganha o
+          selo <strong>Valor personalizado</strong> e os cálculos são refeitos neste navegador.</li>
         <li>Não inventamos valores: campos ausentes permanecem nulos e são
           mostrados como “sem avaliação” ou “sob consulta”.</li>
       </ul>
@@ -377,7 +420,58 @@ lucro %  = 28.000 / 200.000 * 100 = 14%</code></pre>
     </div>
   </dialog>
 
-  <div id="toast" class="toast"></div>
+  <span id="tip-desconto-min" class="sr-only">Desconto calculado mínimo. Imóveis sem avaliação só aparecem se o mínimo for 0.</span>
+  <span id="tip-lucro-min" class="sr-only">Lucro estimado mínimo. Imóveis sem avaliação só aparecem se o mínimo for 0.</span>
+  <span id="tip-taxa-leilao" class="sr-only">Prêmio no preço fora de venda online. 5% vira fator 1,05.</span>
+  <span id="tip-ajustar-valor" class="sr-only">Informe o valor que você acredita que o imóvel vale na venda. Usado só neste navegador para recalcular desconto e lucro.</span>
+  <span id="tip-geocodificar" class="sr-only">Os pontos são aproximados (bairro, cidade ou estado) e atualizados automaticamente.</span>
+  <div id="tooltip-bubble" class="tooltip-bubble" role="tooltip" hidden></div>
+
+  <dialog id="confirm-dialog" class="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-message">
+    <div class="confirm-form">
+      <h2 id="confirm-title">Confirmar exclusão</h2>
+      <p id="confirm-message">Remover este imóvel da sua lista local?</p>
+      <div class="dialog-actions">
+        <button id="btn-confirm-cancel" class="btn" type="button">Cancelar</button>
+        <button id="btn-confirm-ok" class="btn danger" type="button">Sim</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="adjust-dialog" class="adjust-dialog" aria-labelledby="adjust-title" aria-describedby="adjust-description">
+    <form method="dialog" class="adjust-form" id="adjust-form" novalidate>
+      <h2 id="adjust-title">Ajustar valor de venda</h2>
+      <p id="adjust-description" class="muted">
+        Informe o valor que você acredita que este imóvel vale na venda. É uma
+        estimativa sua, usada apenas neste navegador para recalcular desconto e
+        lucro. Não altera os dados da fonte.
+      </p>
+      <dl class="adjust-context">
+        <div>
+          <dt>Preço pedido</dt>
+          <dd id="adjust-price"></dd>
+        </div>
+        <div>
+          <dt id="adjust-valuation-label">Avaliação</dt>
+          <dd id="adjust-valuation"></dd>
+        </div>
+      </dl>
+      <label class="adjust-field" for="adjust-value">Valor esperado de venda (R$)
+        <input id="adjust-value" type="text" inputmode="numeric" autocomplete="off" placeholder="Ex.: 350.000">
+      </label>
+      <p id="adjust-error" class="form-error" role="alert" hidden></p>
+      <div class="dialog-actions">
+        <button id="btn-adjust-cancel" class="btn" type="button">Cancelar</button>
+        <button id="btn-adjust-remove" class="btn" type="button">Remover ajuste</button>
+        <button id="btn-adjust-save" class="btn primary" type="submit">Salvar ajuste</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true">
+    <span id="toast-message"></span>
+    <button id="toast-action" class="toast-action hidden" type="button"></button>
+  </div>
 
   <script src="static/config.js"></script>
   <script src="static/vendor/leaflet.js"></script>
