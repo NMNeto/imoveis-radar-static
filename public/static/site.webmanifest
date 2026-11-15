@@ -1,0 +1,21 @@
+{
+  "name": "Imovanta",
+  "short_name": "Imovanta",
+  "description": "Radar de imóveis com desconto da Caixa, Banco do Brasil, Santander e Itaú.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0b2f6f",
+  "icons": [
+    {
+      "src": "/static/favicon.png",
+      "sizes": "64x64",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

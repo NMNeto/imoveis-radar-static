@@ -1815,8 +1815,17 @@ async function loadMeta() {
     updateMapFilterUI();
   }
   updateHeader();
-  updateUpdateStatus(state.meta.update || {});
   refreshFacets();
+}
+
+function formatUpdatedAt(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) return text;
+  return `${date.toLocaleDateString("pt-BR")} às ${date.toLocaleTimeString("pt-BR", {
+    hour12: false,
+  })}`;
 }
 
 function updateHeader() {
@@ -1824,7 +1833,13 @@ function updateHeader() {
   if (!meta) return;
   const total = Number(meta.total_properties ?? state.baseItems.length);
   const parts = [`${total.toLocaleString("pt-BR")} imóveis`];
-  if (meta.generation_date) parts.push(`gerado em ${meta.generation_date}`);
+  const update = meta.update || {};
+  const updated = update.data_atualizacao || update.ultima_execucao || update.last_success;
+  if (updated) {
+    parts.push(`Atualizado ${formatUpdatedAt(updated)}`);
+  } else if (meta.generation_date) {
+    parts.push(`gerado em ${meta.generation_date}`);
+  }
   setDataStatus(parts.join(" · "));
 }
 
@@ -2156,14 +2171,17 @@ function initMap() {
 
 function renderMap() {
   if (!state.map || !state.cluster) return;
+  const styles = getComputedStyle(document.documentElement);
+  const markerColor = styles.getPropertyValue("--accent").trim() || "#0b6b57";
+  const markerFill = styles.getPropertyValue("--accent-2").trim() || "#0e8a70";
   state.cluster.clearLayers();
   const points = state.items.filter((item) => item.lat != null && item.lng != null);
   const markers = points.map((item) =>
     L.circleMarker([item.lat, item.lng], {
       radius: 7,
       weight: 1,
-      color: "#0b6b57",
-      fillColor: "#0e8a70",
+      color: markerColor,
+      fillColor: markerFill,
       fillOpacity: 0.85,
     }).bindPopup(popupHtml(item))
   );
@@ -2199,28 +2217,6 @@ function updateGeoStatus() {
   if (parts.length) text += ` (${parts.join(", ")})`;
   if (total && points < total) text += " · pontos aproximados";
   $("#geo-status").textContent = text;
-}
-
-function updateUpdateStatus(status) {
-  const element = $("#update-status");
-  if (!element) return;
-  const when = status?.data_atualizacao || status?.last_success;
-  if (status?.last_error && !when) {
-    element.textContent = `Última atualização falhou: ${status.last_error}`;
-    return;
-  }
-  if (when) {
-    const date = new Date(when);
-    element.textContent = Number.isNaN(date.getTime())
-      ? `Atualizado ${when}`
-      : `Atualizado ${date.toLocaleString("pt-BR")}`;
-  } else {
-    element.textContent = "Ainda não atualizado";
-  }
-  const failures = Object.values(status?.fontes || {}).filter((source) => source.last_error);
-  if (failures.length) {
-    element.textContent += ` · falha em ${failures.map((source) => source.nome || source.source).join(", ")}`;
-  }
 }
 
 /* --------------------------------------------------------------------------

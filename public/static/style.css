@@ -220,7 +220,7 @@ body.is-loading .filters > :not(.filters-skeleton) { opacity: 0; pointer-events:
   overflow-x: auto;
   scrollbar-width: thin;
 }
-.quick-filters .chip { padding: 4px 8px; }
+.quick-filters .chip { padding: 4px 7px; }
 
 .search-wrap { position: relative; width: 100%; }
 .search-suggestions {
@@ -349,9 +349,9 @@ main {
   margin-bottom: 8px;
 }
 
-.list-head #count { flex: 0 0 auto; font-size: 13px; white-space: nowrap; }
-.list-head .sort { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); flex: 0 0 auto; margin-left: auto; }
-.list-head .sort select { width: auto; min-height: 30px; padding: 4px 8px; }
+.list-head #count { flex: 0 0 210px; width: 210px; font-size: 13px; white-space: nowrap; }
+.list-head .sort { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); flex: 0 0 204px; margin-left: auto; }
+.list-head .sort select { width: 148px; min-height: 30px; padding: 4px 8px; }
 
 .cards {
   display: grid;
@@ -855,6 +855,9 @@ textarea {
   }
 
   .list-head { flex-wrap: wrap; }
+  .list-head #count { flex: 1 1 auto; width: auto; }
+  .list-head .sort { flex: 0 0 auto; width: auto; }
+  .list-head .sort select { width: auto; }
   .quick-filters { order: 3; flex: 1 0 100%; padding-top: 4px; }
 
   .map-panel { display: none; }
@@ -908,18 +911,21 @@ textarea {
 }
 .brand-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 12px;
   min-width: 0;
 }
 .brand-head h1 { white-space: nowrap; }
-.topbar #update-status {
-  max-width: 640px;
-  overflow: hidden;
-  font-size: 11.5px;
-  color: var(--muted);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.brand-logo {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  line-height: 0;
+}
+.brand-logo img {
+  display: block;
+  width: auto;
+  height: 42px;
 }
 .topbar .actions {
   flex-wrap: nowrap;
@@ -987,6 +993,7 @@ textarea {
     padding-right: 132px;
   }
   .brand-head h1 { font-size: 19px; }
+  .brand-logo img { height: 32px; }
   .brand-head #data-meta {
     flex: 1 0 100%;
     overflow: hidden;
@@ -994,7 +1001,6 @@ textarea {
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .topbar #update-status { max-width: none; font-size: 10.5px; }
   .topbar .actions {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
@@ -1048,3 +1054,24 @@ textarea {
   .topbar #btn-share .ico svg { width: 15px; height: 15px; }
   .topbar #btn-share .action-label { font-size: 12px; }
 }
+
+/* --------------------------------------------------------------------------
+ * Paleta da marca Imovanta (Versão B)
+ * ------------------------------------------------------------------------ */
+:root {
+  --accent: #0b2f6f;
+  --accent-2: #0d5bd7;
+  --brand-orange: #f26b0f;
+}
+.chip[aria-pressed="true"],
+.quick-chip[aria-pressed="true"] {
+  background: var(--brand-orange);
+  border-color: var(--brand-orange);
+}
+input:focus,
+select:focus,
+textarea:focus { outline-color: rgba(13, 91, 215, .35); }
+[data-combo] input:focus { outline-color: rgba(13, 91, 215, .35); }
+.info-btn:focus-visible,
+.chip:focus-visible,
+.addr-link:focus-visible { outline-color: rgba(13, 91, 215, .45); }

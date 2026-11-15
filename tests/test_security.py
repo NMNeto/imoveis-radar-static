@@ -20,7 +20,7 @@ def test_security_headers_are_present():
         "Strict-Transport-Security: max-age=63072000; includeSubDomains; preload",
         "Cross-Origin-Opener-Policy: same-origin",
         "Cross-Origin-Resource-Policy: same-origin",
-        "Access-Control-Allow-Origin: https://imoveis-radar-static.pages.dev",
+        "Access-Control-Allow-Origin: https://imovanta.com.br",
     ]
     for header in required:
         assert header in text, header
