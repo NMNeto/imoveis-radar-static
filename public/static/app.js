@@ -1804,14 +1804,9 @@ async function loadMeta() {
     updateMapFilterUI();
     const bounds = boundsFromBbox(state.bbox);
     if (bounds && state.map) state.map.fitBounds(bounds, { padding: [12, 12] });
-  } else if (isMobileLayout()) {
-    // No mobile a lista abre primeiro; o mapa ainda não tem dimensões visíveis.
-    state.mapFilter = false;
-    state.bbox = "";
-    updateMapFilterUI();
   } else {
     state.mapFilter = true;
-    state.bbox = currentMapBbox();
+    state.bbox = isMobileLayout() ? BRAZIL_BBOX : currentMapBbox();
     updateMapFilterUI();
   }
   updateHeader();
@@ -2001,8 +1996,8 @@ function renderEmptyError(message) {
 
 function resetAllFilters() {
   state.filters = { ...DEFAULTS };
-  state.mapFilter = false;
-  state.bbox = "";
+  state.mapFilter = true;
+  state.bbox = isMobileLayout() ? BRAZIL_BBOX : currentMapBbox();
   updateMapFilterUI();
   applyFiltersToInputs(state.filters);
   scheduleFetch();
@@ -2054,6 +2049,7 @@ function popupHtml(item) {
 }
 
 const BRAZIL_VIEW = { center: [-14.235, -51.925], zoom: 4 };
+const BRAZIL_BBOX = "-34,-74,6,-34";
 
 const MAP_TILES = {
   street: {
@@ -2395,7 +2391,8 @@ function syncCustoFixoInput() {
   const percentual = $("#cfg-custo-modo").value === "percentual";
   const input = $("#cfg-custo-fixo");
   input.step = percentual ? "0.01" : "1";
-  input.placeholder = percentual ? "Ex.: 5" : "Ex.: 40000";
+  input.placeholder = percentual ? "Ex.: 30" : "Ex.: 40000";
+  input.max = percentual ? "100" : "";
 }
 
 function diffSettings(settings, baked) {
@@ -2450,9 +2447,11 @@ async function saveConfig(event) {
   const taxaPct = Number($("#cfg-taxa-venda").value);
   const custo = Number($("#cfg-custo-fixo").value);
   const fatorPct = Number($("#cfg-fator-preco").value);
+  const custoModo = $("#cfg-custo-modo").value;
   if (
     !Number.isFinite(taxaPct) || taxaPct < 0 || taxaPct > 100 ||
     !Number.isFinite(custo) || custo < 0 ||
+    (custoModo === "percentual" && custo > 100) ||
     !Number.isFinite(fatorPct) || fatorPct < 0
   ) {
     $("#config-msg").textContent = "Preencha os custos com valores válidos.";
@@ -2528,32 +2527,6 @@ function resetConfig() {
   showToast("Ajustes locais removidos.");
   refreshFacets();
   fetchProperties();
-}
-
-function downloadJSON(filename, payload) {
-  const blob = new Blob([JSON.stringify(payload, null, 2)], {
-    type: "application/json;charset=utf-8",
-  });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-function exportConfig() {
-  const payload = {
-    _instrucoes:
-      "Aplique este arquivo ao repositório com: python scripts/importar_config.py config-local.json",
-    ...buildEffectiveConfig(),
-  };
-  downloadJSON("config-local.json", payload);
-  showToast(
-    "Arquivo exportado. Rode scripts/importar_config.py para aplicar ao repositório."
-  );
 }
 
 /* --------------------------------------------------------------------------
@@ -2670,6 +2643,7 @@ function bindEvents() {
   $("#btn-notice-help").addEventListener("click", openHelp);
   $("#btn-help").addEventListener("click", openHelp);
   $("#btn-help-close").addEventListener("click", () => $("#help-dialog").close());
+  $("#btn-help-close-bottom").addEventListener("click", () => $("#help-dialog").close());
   $("#btn-feedback").addEventListener("click", (event) => {
     if (event.metaKey || event.ctrlKey || event.shiftKey) return;
     event.preventDefault();
@@ -2679,7 +2653,6 @@ function bindEvents() {
   $("#btn-share").addEventListener("click", copyShareLink);
   $("#btn-config").addEventListener("click", openConfig);
   $("#btn-config-close").addEventListener("click", () => $("#config-dialog").close());
-  $("#btn-config-export").addEventListener("click", exportConfig);
   $("#btn-config-reset").addEventListener("click", resetConfig);
   $("#cfg-custo-modo").addEventListener("change", syncCustoFixoInput);
   $("#config-form").addEventListener("submit", saveConfig);
@@ -2713,8 +2686,8 @@ function bindEvents() {
 async function init() {
   bindTooltips();
   initMap();
-  state.mapFilter = !isMobileLayout();
-  state.bbox = state.mapFilter ? currentMapBbox() : "";
+  state.mapFilter = true;
+  state.bbox = isMobileLayout() ? BRAZIL_BBOX : currentMapBbox();
   updateMapFilterUI();
   initCombos();
   bindEvents();

@@ -24,13 +24,13 @@ from .text import br_number, field_text, norm, parse_float, parse_money
 logger = logging.getLogger(__name__)
 
 TAXA_VENDA = 0.06
-CUSTO_FIXO = 40000
+CUSTO_FIXO = 30
 FATOR_PRECO = 1.05
 
 DEFAULT_SETTINGS = {
     "taxa_venda": TAXA_VENDA,
     "custo_fixo": float(CUSTO_FIXO),
-    "custo_fixo_modo": "fixo",
+    "custo_fixo_modo": "percentual",
     "fator_preco": FATOR_PRECO,
 }
 
@@ -70,7 +70,14 @@ def normalize_settings(raw) -> dict:
             taxa = taxa / 100
         settings["taxa_venda"] = min(taxa, 1.0)
 
-    mode = norm(raw.get("custo_fixo_modo") or raw.get("modo") or "fixo")
+    raw_mode = raw.get("custo_fixo_modo") or raw.get("modo")
+    if raw_mode is None:
+        # Compatibilidade: configurações antigas sem modo e com valor alto
+        # continuam sendo tratadas como valor fixo em reais.
+        legacy_cost = parse_float(raw.get("custo_fixo"))
+        mode = "FIXO" if legacy_cost is not None and legacy_cost > 100 else "PERCENTUAL"
+    else:
+        mode = norm(raw_mode)
     settings["custo_fixo_modo"] = (
         "percentual" if ("PERC" in mode or "PORC" in mode) else "fixo"
     )

@@ -1,6 +1,6 @@
 {
   "taxa_venda": 0.06,
-  "custo_fixo": 40000.0,
-  "custo_fixo_modo": "fixo",
+  "custo_fixo": 30.0,
+  "custo_fixo_modo": "percentual",
   "fator_preco": 1.05
 }
