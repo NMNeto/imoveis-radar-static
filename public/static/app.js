@@ -7,6 +7,12 @@ const IMAGE_PLACEHOLDER = "static/placeholder.svg";
 const STORAGE_KEY = "imoveis-radar-static:overrides:v1";
 const NOTICE_KEY = "imoveis-radar-static:notice:v1";
 const ANALYTICS_KEY = "imoveis-radar-static:analytics-consent:v1";
+const QUICK_PRESETS_KEY = "imoveis-radar-static:quick-presets:v1";
+const MOBILE_LAYOUT = "(max-width: 767px)";
+const FILTER_URL_KEYS = [
+  "uf", "cidade", "bairro", "financiamento", "modalidade", "fonte", "q",
+  "sort", "preco_max", "desconto_min", "lucro_min", "bbox", "exclusoes",
+];
 
 const DEFAULTS = {
   uf: "all",
@@ -83,6 +89,11 @@ const state = {
   firstFetch: true,
   facetsApplying: false,
   dataLoaded: false,
+  searchIndex: [],
+  suggestionActive: -1,
+  suggestionTimer: null,
+  mobileMapView: false,
+  mobileMapFit: false,
 };
 
 const money = new Intl.NumberFormat("pt-BR", {
@@ -193,6 +204,406 @@ function compareText(a, b) {
 function uniqueSorted(values) {
   return [...new Set(values.filter((value) => value !== null && value !== undefined && value !== ""))]
     .sort(compareText);
+}
+
+function isMobileLayout() {
+  return window.matchMedia(MOBILE_LAYOUT).matches;
+}
+
+function readStoredValue(key) {
+  try {
+    return window.localStorage.getItem(key);
+  } catch (error) {
+    return null;
+  }
+}
+
+function writeStoredValue(key, value) {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch (error) {
+    // Armazenamento indisponível: a preferência vale só para esta sessão.
+  }
+}
+
+/* --------------------------------------------------------------------------
+ * Filtros colapsáveis, presets rápidos e resumo de filtros ativos
+ * ------------------------------------------------------------------------ */
+
+const QUICK_PRESETS = {
+  desconto: {
+    label: "Desconto > 30%",
+    apply: (filters) => ({ ...filters, desconto_min: 30 }),
+    clear: (filters) => ({ ...filters, desconto_min: 0 }),
+    isActive: (filters) => Number(filters.desconto_min) >= 30,
+  },
+  lucro: {
+    label: "Lucro > R$ 50k",
+    apply: (filters) => ({ ...filters, lucro_min: 50000 }),
+    clear: (filters) => ({ ...filters, lucro_min: 0 }),
+    isActive: (filters) => Number(filters.lucro_min) >= 50000,
+  },
+  financiavel: {
+    label: "Financiável",
+    apply: (filters) => ({ ...filters, financiamento: "sim" }),
+    clear: (filters) => ({ ...filters, financiamento: "all" }),
+    isActive: (filters) => filters.financiamento === "sim",
+  },
+};
+
+function loadQuickPresets() {
+  const raw = readStoredValue(QUICK_PRESETS_KEY);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? parsed.filter((id) => Object.prototype.hasOwnProperty.call(QUICK_PRESETS, id))
+      : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function applyQuickPresetsToFilters(filters, ids) {
+  let next = { ...filters };
+  for (const id of ids) {
+    const preset = QUICK_PRESETS[id];
+    if (preset) next = preset.apply(next);
+  }
+  return next;
+}
+
+function activeQuickPresetIds(filters) {
+  return Object.entries(QUICK_PRESETS)
+    .filter(([, preset]) => preset.isActive(filters))
+    .map(([id]) => id);
+}
+
+function persistQuickPresets(ids) {
+  const value = JSON.stringify(ids);
+  if (readStoredValue(QUICK_PRESETS_KEY) === value) return;
+  writeStoredValue(QUICK_PRESETS_KEY, value);
+}
+
+function updateQuickFilters() {
+  if (!state.meta) return;
+  const filters = readFilters();
+  const active = activeQuickPresetIds(filters);
+  document.querySelectorAll("[data-preset]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(active.includes(button.dataset.preset)));
+  });
+  persistQuickPresets(active);
+}
+
+function toggleQuickPreset(id) {
+  const preset = QUICK_PRESETS[id];
+  if (!preset) return;
+  const current = readFilters();
+  const next = preset.isActive(current) ? preset.clear(current) : preset.apply(current);
+  applyFiltersToInputs(next);
+  scheduleFetch();
+  scheduleFacets();
+}
+
+const FILTER_CONTROL_SELECTORS = {
+  uf: "#combo-uf",
+  cidade: "#combo-cidade",
+  bairro: "#combo-bairro",
+  fonte: "#f-fonte",
+  preco_max: "#f-preco-max",
+  desconto_min: "#f-desconto-min",
+  lucro_min: "#f-lucro-min",
+  financiamento: "#f-financiamento",
+  modalidade: "#f-modalidade",
+  q: "#f-q",
+};
+
+function countActiveFilters(filters) {
+  let count = 0;
+  if (filters.uf !== "all") count += 1;
+  if (filters.cidade !== "all") count += 1;
+  if (filters.bairro !== "all") count += 1;
+  if (filters.fonte !== "all") count += 1;
+  if (Number(filters.preco_max) > 0) count += 1;
+  if (Number(filters.desconto_min) > 0) count += 1;
+  if (Number(filters.lucro_min) > 0) count += 1;
+  if (filters.financiamento !== "all") count += 1;
+  if (filters.modalidade !== "all") count += 1;
+  if (filters.q) count += 1;
+  return count;
+}
+
+function updateFiltersButton() {
+  const button = $("#btn-filters");
+  if (!button || !state.meta) return;
+  const count = countActiveFilters(readFilters());
+  button.textContent = count ? `Filtros (${count})` : "Filtros";
+}
+
+function updateActiveFilterControls() {
+  if (!state.meta) return;
+  const filters = readFilters();
+  const active = {
+    uf: filters.uf !== "all",
+    cidade: filters.cidade !== "all",
+    bairro: filters.bairro !== "all",
+    fonte: filters.fonte !== "all",
+    preco_max: Number(filters.preco_max) > 0,
+    desconto_min: Number(filters.desconto_min) > 0,
+    lucro_min: Number(filters.lucro_min) > 0,
+    financiamento: filters.financiamento !== "all",
+    modalidade: filters.modalidade !== "all",
+    q: Boolean(filters.q),
+  };
+  for (const [key, selector] of Object.entries(FILTER_CONTROL_SELECTORS)) {
+    $(selector)?.closest("label")?.classList.toggle("filter-active", Boolean(active[key]));
+  }
+}
+
+function refreshFilterUI() {
+  if (!state.meta) return;
+  updateQuickFilters();
+  updateActiveFilterControls();
+  updateFiltersButton();
+}
+
+/* --------------------------------------------------------------------------
+ * Drawer de filtros no mobile e alternância Lista/Mapa
+ * ------------------------------------------------------------------------ */
+
+function openFiltersDrawer() {
+  if (!isMobileLayout()) return;
+  document.body.classList.add("filters-open");
+  $("#filters-backdrop")?.classList.remove("hidden");
+  $("#btn-filters")?.setAttribute("aria-expanded", "true");
+  // A gaveta usa visibility na transição; o foco só funciona após ela ficar visível.
+  setTimeout(() => $("#btn-filters-close")?.focus(), 220);
+}
+
+function closeFiltersDrawer() {
+  const panel = $("#filters-panel");
+  const hadFocus = Boolean(panel?.contains(document.activeElement));
+  document.body.classList.remove("filters-open");
+  $("#filters-backdrop")?.classList.add("hidden");
+  $("#btn-filters")?.setAttribute("aria-expanded", "false");
+  if (hadFocus) setTimeout(() => $("#btn-filters")?.focus(), 0);
+}
+
+function fitMapToItems() {
+  if (!state.map || !window.L) return;
+  const points = state.items.filter((item) => item.lat != null && item.lng != null);
+  if (!points.length) return;
+  state.map.fitBounds(
+    L.latLngBounds(points.map((item) => [item.lat, item.lng])),
+    { padding: [24, 24], maxZoom: 13 }
+  );
+}
+
+function resizeMobileMap() {
+  const mapElement = $("#map");
+  if (!mapElement) return;
+  if (!isMobileLayout() || !state.mobileMapView) {
+    mapElement.style.height = "";
+    state.map?.invalidateSize();
+    return;
+  }
+  const main = document.querySelector("main");
+  const foot = document.querySelector(".map-foot");
+  const top = main ? main.getBoundingClientRect().top : 0;
+  const footHeight = foot ? foot.getBoundingClientRect().height : 0;
+  const viewportHeight = window.visualViewport?.height || window.innerHeight;
+  // Reserva espaço para o rodapé do mapa e para o botão flutuante Lista/Mapa.
+  const available = Math.max(320, viewportHeight - top - footHeight - 84);
+  mapElement.style.height = `${available}px`;
+  state.map?.invalidateSize();
+}
+
+function setMobileView(view) {
+  const showMap = view === "map";
+  state.mobileMapView = showMap;
+  document.body.classList.toggle("mobile-map-view", showMap);
+  const button = $("#btn-view-toggle");
+  if (button) {
+    button.textContent = showMap ? "Ver Lista" : "Ver Mapa";
+    button.setAttribute("aria-pressed", String(showMap));
+    button.setAttribute("aria-label", showMap ? "Ver lista de imóveis" : "Ver mapa");
+  }
+  if (showMap) {
+    closeFiltersDrawer();
+    window.scrollTo({ top: 0, behavior: "auto" });
+    requestAnimationFrame(() => {
+      resizeMobileMap();
+      if (!state.mobileMapFit) {
+        if (state.mapFilter && state.bbox) {
+          const bounds = boundsFromBbox(state.bbox);
+          if (bounds) state.map?.fitBounds(bounds, { padding: [12, 12] });
+        } else {
+          fitMapToItems();
+        }
+        state.mobileMapFit = true;
+      }
+    });
+  } else {
+    resizeMobileMap();
+  }
+}
+
+/* --------------------------------------------------------------------------
+ * Autocomplete acessível da busca (IDs, cidades e bairros)
+ * ------------------------------------------------------------------------ */
+
+function buildSearchIndex() {
+  const seen = new Set();
+  const entries = [];
+  const add = (value, kind, label, weight) => {
+    const text = String(value ?? "").trim();
+    if (!text) return;
+    const key = `${kind}|${normalizeSearch(text)}|${label}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    entries.push({ value: text, kind, label, search: normalizeSearch(text), weight });
+  };
+
+  for (const item of state.allItems) add(item.id, "ID", `ID ${item.id}`, 2);
+
+  for (const [uf, cidades] of Object.entries(state.meta?.cidades || {})) {
+    for (const cidade of cidades) add(cidade, "Cidade", `${cidade} — ${uf}`, 0);
+  }
+
+  for (const [key, bairros] of Object.entries(state.meta?.bairros || {})) {
+    const [uf, cidade] = key.split("|");
+    for (const bairro of bairros) add(bairro, "Bairro", `${bairro} — ${cidade}/${uf}`, 1);
+  }
+
+  state.searchIndex = entries;
+}
+
+function closeSearchSuggestions() {
+  clearTimeout(state.suggestionTimer);
+  const list = $("#search-suggestions");
+  const input = $("#f-q");
+  if (list) list.hidden = true;
+  if (input) {
+    input.setAttribute("aria-expanded", "false");
+    input.removeAttribute("aria-activedescendant");
+  }
+  state.suggestionActive = -1;
+}
+
+function searchSuggestionsFor(query) {
+  const normalized = normalizeSearch(query);
+  if (normalized.length < 2) return [];
+  const preferIds = /^[0-9]/.test(normalized) || normalized.includes(":");
+  const matches = [];
+  for (const entry of state.searchIndex) {
+    const position = entry.search.indexOf(normalized);
+    if (position === -1) continue;
+    let weight = entry.weight;
+    if (entry.kind === "ID" && preferIds) weight = -1;
+    if (entry.kind !== "ID" && preferIds) weight += 3;
+    matches.push({ entry, score: (position === 0 ? 0 : 20) + weight, position });
+  }
+  matches.sort(
+    (a, b) =>
+      a.score - b.score ||
+      a.position - b.position ||
+      a.entry.label.localeCompare(b.entry.label, "pt-BR")
+  );
+  return matches.slice(0, 12).map((match) => match.entry);
+}
+
+function updateSearchSuggestions() {
+  const input = $("#f-q");
+  const list = $("#search-suggestions");
+  if (!input || !list || !state.searchIndex.length) return;
+  const entries = searchSuggestionsFor(input.value);
+  if (!entries.length) {
+    closeSearchSuggestions();
+    return;
+  }
+  list.innerHTML = entries
+    .map(
+      (entry, index) =>
+        `<li id="search-suggestion-${index}" role="option" aria-selected="false" data-value="${escapeHtml(entry.value)}"><span class="suggestion-value">${escapeHtml(entry.kind === "ID" ? entry.value : entry.label)}</span><span class="suggestion-kind">${escapeHtml(entry.kind)}</span></li>`
+    )
+    .join("");
+  list.hidden = false;
+  input.setAttribute("aria-expanded", "true");
+  state.suggestionActive = -1;
+}
+
+function moveSearchSuggestion(delta) {
+  const input = $("#f-q");
+  const list = $("#search-suggestions");
+  if (!input || !list || list.hidden) return;
+  const options = [...list.querySelectorAll('[role="option"]')];
+  if (!options.length) return;
+  let next = state.suggestionActive + delta;
+  if (next < 0) next = options.length - 1;
+  if (next >= options.length) next = 0;
+  state.suggestionActive = next;
+  options.forEach((option, index) => {
+    option.setAttribute("aria-selected", String(index === next));
+  });
+  input.setAttribute("aria-activedescendant", options[next].id);
+  options[next].scrollIntoView({ block: "nearest" });
+}
+
+function chooseSearchSuggestion(index) {
+  const input = $("#f-q");
+  const list = $("#search-suggestions");
+  const option = list?.querySelectorAll('[role="option"]')[index];
+  if (!input || !option) return;
+  input.value = option.dataset.value || "";
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  closeSearchSuggestions();
+  input.focus();
+}
+
+function initSearchAutocomplete() {
+  const input = $("#f-q");
+  const list = $("#search-suggestions");
+  if (!input || !list) return;
+  input.addEventListener("input", () => {
+    clearTimeout(state.suggestionTimer);
+    state.suggestionTimer = setTimeout(updateSearchSuggestions, 90);
+  });
+  input.addEventListener("focus", () => {
+    if (normalizeSearch(input.value).length >= 2) updateSearchSuggestions();
+  });
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      if (list.hidden) {
+        updateSearchSuggestions();
+      } else {
+        event.preventDefault();
+        moveSearchSuggestion(event.key === "ArrowDown" ? 1 : -1);
+      }
+      return;
+    }
+    if (event.key === "Enter" && !list.hidden && state.suggestionActive >= 0) {
+      event.preventDefault();
+      chooseSearchSuggestion(state.suggestionActive);
+      return;
+    }
+    if (event.key === "Escape" && !list.hidden) {
+      event.stopPropagation();
+      closeSearchSuggestions();
+    }
+  });
+  list.addEventListener("mousedown", (event) => {
+    event.preventDefault();
+    const option = event.target.closest('[role="option"]');
+    if (option) chooseSearchSuggestion([...list.children].indexOf(option));
+  });
+  document.addEventListener("click", (event) => {
+    if (!event.target.closest(".search-wrap")) closeSearchSuggestions();
+  });
+}
+
+function hasURLFilterParams() {
+  const params = new URLSearchParams(window.location.search);
+  return FILTER_URL_KEYS.some((key) => params.has(key));
 }
 
 function filtersFromURL() {
@@ -952,6 +1363,7 @@ function initCombo(target) {
       return;
     }
     if (event.key === "Escape") {
+      if (root.classList.contains("open")) event.stopPropagation();
       closeCombo(root);
       resetComboText(root);
       input.blur();
@@ -1121,6 +1533,7 @@ function applyFiltersToInputs(filters) {
   $("#f-exclusoes").checked = filters.aplicar_exclusoes;
   $("#f-sort").value = filters.sort;
   if (!$("#f-sort").value) $("#f-sort").value = DEFAULTS.sort;
+  refreshFilterUI();
 }
 
 /* --------------------------------------------------------------------------
@@ -1261,9 +1674,13 @@ async function loadMeta() {
   await nextPaint();
   recomputeAllItems();
   state.dataLoaded = true;
+  buildSearchIndex();
 
   if (!state.initialized) {
     state.filters = filtersFromURL();
+    if (!hasURLFilterParams()) {
+      state.filters = applyQuickPresetsToFilters(state.filters, loadQuickPresets());
+    }
     state.initialized = true;
   }
   applyFiltersToInputs(state.filters);
@@ -1273,6 +1690,11 @@ async function loadMeta() {
     updateMapFilterUI();
     const bounds = boundsFromBbox(state.bbox);
     if (bounds && state.map) state.map.fitBounds(bounds, { padding: [12, 12] });
+  } else if (isMobileLayout()) {
+    // No mobile a lista abre primeiro; o mapa ainda não tem dimensões visíveis.
+    state.mapFilter = false;
+    state.bbox = "";
+    updateMapFilterUI();
   } else {
     state.mapFilter = true;
     state.bbox = currentMapBbox();
@@ -1295,6 +1717,7 @@ function updateHeader() {
 function fetchProperties() {
   if (!state.allItems.length && !state.dataLoaded) return;
   state.filters = readFilters();
+  refreshFilterUI();
   syncURL(state.filters);
   const filtered = filterItems(
     state.allItems,
@@ -2036,6 +2459,27 @@ function bindEvents() {
   $("#btn-reset").addEventListener("click", resetAllFilters);
   $("#btn-empty-reset").addEventListener("click", resetAllFilters);
   $("#btn-empty-price").addEventListener("click", increasePriceMax);
+  $("#btn-filters").addEventListener("click", openFiltersDrawer);
+  $("#btn-filters-close").addEventListener("click", closeFiltersDrawer);
+  $("#filters-backdrop").addEventListener("click", closeFiltersDrawer);
+  $("#btn-view-toggle").addEventListener("click", () => {
+    setMobileView(state.mobileMapView ? "list" : "map");
+  });
+  document.querySelectorAll("[data-preset]").forEach((button) => {
+    button.addEventListener("click", () => toggleQuickPreset(button.dataset.preset));
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && document.body.classList.contains("filters-open")) {
+      closeFiltersDrawer();
+    }
+  });
+  window.addEventListener("resize", () => {
+    if (!isMobileLayout() && document.body.classList.contains("filters-open")) {
+      closeFiltersDrawer();
+    }
+    resizeMobileMap();
+  });
+  window.visualViewport?.addEventListener("resize", resizeMobileMap);
   $("#btn-map-filter").addEventListener("click", () => toggleMapFilter(!state.mapFilter));
   $("#btn-map-clear").addEventListener("click", () => toggleMapFilter(false));
   $("#btn-more").addEventListener("click", () => {
@@ -2097,11 +2541,12 @@ function bindEvents() {
 async function init() {
   bindTooltips();
   initMap();
-  state.mapFilter = true;
-  state.bbox = currentMapBbox();
+  state.mapFilter = !isMobileLayout();
+  state.bbox = state.mapFilter ? currentMapBbox() : "";
   updateMapFilterUI();
   initCombos();
   bindEvents();
+  initSearchAutocomplete();
   showNoticeIfNeeded();
   window.__loadGTM?.();
   try {

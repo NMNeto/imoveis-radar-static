@@ -18,62 +18,101 @@
 <body class="is-loading">
   <header class="topbar">
     <div class="brand">
-      <h1>Busca Imóveis</h1>
-      <span id="data-meta" class="muted"></span>
-      <span id="loading-status" class="loading-status" role="status" aria-live="polite"></span>
+      <div class="brand-head">
+        <h1>Busca Imóveis</h1>
+        <span id="data-meta" class="muted"></span>
+        <span id="loading-status" class="loading-status" role="status" aria-live="polite"></span>
+      </div>
+      <span id="update-status" class="status"></span>
     </div>
     <div class="actions">
-      <span id="update-status" class="status"></span>
-      <button id="btn-notice" class="btn" type="button">Aviso</button>
-      <a id="btn-feedback" class="btn" href="https://forms.gle/HnciJsM5Xzto8ATd6" target="_blank" rel="noopener noreferrer" title="Enviar sugestão de melhoria">Sugestões</a>
-      <a id="btn-download" class="btn" href="data/busca_imoveis.csv" download>Baixar CSV</a>
-      <button id="btn-share" class="btn" type="button">Compartilhar</button>
-      <button id="btn-config" class="btn" type="button">Configurações</button>
-      <button id="btn-help" class="btn" type="button">Ajuda</button>
+      <button id="btn-notice" class="btn icon-action" type="button" title="Aviso">
+        <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></span>
+        <span class="action-label">Aviso</span>
+      </button>
+      <a id="btn-feedback" class="btn icon-action" href="https://forms.gle/HnciJsM5Xzto8ATd6" target="_blank" rel="noopener noreferrer" title="Enviar sugestão de melhoria">
+        <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"/></svg></span>
+        <span class="action-label">Sugestões</span>
+      </a>
+      <a id="btn-download" class="btn icon-action" href="data/busca_imoveis.csv" download title="Baixar CSV" aria-label="Baixar CSV">
+        <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg></span>
+        <span class="action-label">CSV</span>
+      </a>
+      <button id="btn-share" class="btn icon-action primary" type="button" title="Compartilhar">
+        <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.6 6.8-3.9M8.6 13.4l6.8 3.9"/></svg></span>
+        <span class="action-label">Compartilhar</span>
+      </button>
+      <button id="btn-config" class="btn icon-action" type="button" title="Configurações" aria-label="Configurações">
+        <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.6V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.6 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg></span>
+        <span class="action-label">Config.</span>
+      </button>
+      <button id="btn-help" class="btn icon-action" type="button" title="Ajuda">
+        <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2-3 4"/><path d="M12 17h.01"/></svg></span>
+        <span class="action-label">Ajuda</span>
+      </button>
     </div>
   </header>
 
-  <section class="filters" aria-label="Filtros">
-    <label>UF
+  <div id="filters-backdrop" class="filters-backdrop hidden"></div>
+
+  <section id="filters-panel" class="filters" aria-label="Filtros">
+    <div class="filters-head">
+      <strong>Filtros</strong>
+      <button id="btn-filters-close" class="btn small" type="button">Fechar</button>
+    </div>
+    <label class="filter-basic">
+      <span class="field-label">UF</span>
       <div data-combo id="combo-uf"></div>
     </label>
-    <label>Cidade
+    <label class="filter-basic">
+      <span class="field-label">Cidade</span>
       <div data-combo id="combo-cidade"></div>
     </label>
-    <label>Bairro
-      <div data-combo id="combo-bairro"></div>
-    </label>
-    <label>Fonte
-      <select id="f-fonte"></select>
-    </label>
-    <label>Preço máx. (R$)
+    <label class="filter-basic">
+      <span class="field-label">Preço máx. (R$)</span>
       <input id="f-preco-max" type="number" min="0" step="1000" inputmode="numeric" placeholder="Sem limite">
     </label>
-    <label>
+    <label class="filter-basic">
       <span class="field-label">Desconto mín. (%)
         <button class="info-btn" type="button" aria-label="Ajuda sobre desconto mínimo" aria-describedby="tip-desconto-min" data-tooltip-id="tip-desconto-min">ℹ️</button>
       </span>
       <input id="f-desconto-min" type="number" min="0" max="100" step="1" inputmode="numeric" placeholder="Sem mínimo">
     </label>
-    <label>
-      <span class="field-label">Lucro mín. (R$)
-        <button class="info-btn" type="button" aria-label="Ajuda sobre lucro mínimo" aria-describedby="tip-lucro-min" data-tooltip-id="tip-lucro-min">ℹ️</button>
-      </span>
-      <input id="f-lucro-min" type="number" min="0" step="1000" inputmode="numeric" placeholder="Sem mínimo">
-    </label>
-    <label>Financiamento
-      <select id="f-financiamento">
-        <option value="all">Todos</option>
-        <option value="sim">Sim</option>
-        <option value="nao">Não</option>
-      </select>
-    </label>
-    <label>Modalidade
-      <select id="f-modalidade"></select>
-    </label>
-    <label class="grow">Buscar
-      <input id="f-q" type="search" placeholder="cidade, bairro, endereço, ID…">
-    </label>
+    <div id="filters-extra" class="filters-extra">
+      <label>
+        <span class="field-label">Bairro</span>
+        <div data-combo id="combo-bairro"></div>
+      </label>
+      <label>
+        <span class="field-label">Fonte</span>
+        <select id="f-fonte"></select>
+      </label>
+      <label>
+        <span class="field-label">Lucro mín. (R$)
+          <button class="info-btn" type="button" aria-label="Ajuda sobre lucro mínimo" aria-describedby="tip-lucro-min" data-tooltip-id="tip-lucro-min">ℹ️</button>
+        </span>
+        <input id="f-lucro-min" type="number" min="0" step="1000" inputmode="numeric" placeholder="Sem mínimo">
+      </label>
+      <label>
+        <span class="field-label">Financiamento</span>
+        <select id="f-financiamento">
+          <option value="all">Todos</option>
+          <option value="sim">Sim</option>
+          <option value="nao">Não</option>
+        </select>
+      </label>
+      <label>
+        <span class="field-label">Modalidade</span>
+        <select id="f-modalidade"></select>
+      </label>
+      <label class="grow">
+        <span class="field-label">Buscar</span>
+        <div class="search-wrap">
+          <input id="f-q" type="search" placeholder="cidade, bairro, endereço, ID…" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="search-suggestions">
+          <ul id="search-suggestions" class="search-suggestions" role="listbox" aria-label="Sugestões de busca" hidden></ul>
+        </div>
+      </label>
+    </div>
     <label class="check">
       <input id="f-exclusoes" type="checkbox" checked> Aplicar exclusões
     </label>
@@ -93,15 +132,24 @@
     </div>
   </section>
 
+  <div class="applied-bar">
+    <button id="btn-filters" class="btn small filters-btn" type="button" aria-controls="filters-panel" aria-expanded="false">Filtros</button>
+  </div>
+
   <main>
     <section class="list-panel">
       <div class="list-head">
         <span id="count" class="muted"></span>
+        <div class="quick-filters" role="group" aria-label="Filtros rápidos">
+          <button class="chip quick-chip" type="button" data-preset="desconto" aria-pressed="false">🔥 Desconto &gt; 30%</button>
+          <button class="chip quick-chip" type="button" data-preset="lucro" aria-pressed="false">💰 Lucro &gt; R$ 50k</button>
+          <button class="chip quick-chip" type="button" data-preset="financiavel" aria-pressed="false">✅ Financiável</button>
+        </div>
         <label class="sort">Ordenar
           <select id="f-sort">
             <option value="desconto_desc">Maior desconto</option>
-            <option value="lucro_desc">Maior lucro R$</option>
-            <option value="lucro_pct_desc">Maior lucro %</option>
+            <option value="lucro_desc">Lucro estimado (R$)</option>
+            <option value="lucro_pct_desc">Lucro estimado (%)</option>
             <option value="preco_asc">Menor preço</option>
             <option value="preco_desc">Maior preço</option>
             <option value="endereco">Endereço</option>
@@ -141,6 +189,8 @@
       </div>
     </aside>
   </main>
+
+  <button id="btn-view-toggle" class="view-toggle" type="button" aria-pressed="false" aria-label="Ver mapa">Ver Mapa</button>
 
   <dialog id="config-dialog">
     <form method="dialog" class="config-form" id="config-form">
@@ -237,18 +287,25 @@
             <tr><td>Lucro mín.</td><td>Mostra imóveis com lucro estimado maior ou igual ao valor. Imóveis sem avaliação só aparecem se o mínimo for 0.</td></tr>
             <tr><td>Financiamento</td><td>Filtra por “Sim”, “Não” ou todos.</td></tr>
             <tr><td>Modalidade</td><td>Filtra por leilão, venda direta, venda online etc.</td></tr>
-            <tr><td>Buscar</td><td>Pesquisa em ID, UF, cidade, bairro, endereço, descrição e modalidade.</td></tr>
+            <tr><td>Buscar</td><td>Pesquisa em ID, UF, cidade, bairro, endereço, descrição e modalidade. As sugestões ignoram acentos e maiúsculas.</td></tr>
+            <tr><td>Filtros rápidos</td><td>Atalhos para desconto acima de 30%, lucro acima de R$ 50 mil e imóveis financiáveis. Podem ser combinados entre si e com os demais filtros.</td></tr>
             <tr><td>Aplicar exclusões</td><td>Respeita as listas de IDs e locais excluídos nas Configurações.</td></tr>
             <tr><td>Limpar</td><td>Volta todos os filtros para o padrão.</td></tr>
           </tbody>
         </table>
       </div>
+      <p class="muted">
+        No computador, todos os filtros ficam visíveis. No celular, o botão
+        <strong>Filtros</strong> abre a gaveta lateral e o botão flutuante alterna
+        entre a lista e o mapa. O botão <strong>Compartilhar</strong> copia a URL com
+        todos os filtros e a ordenação atuais.
+      </p>
 
       <h3>Ordenação</h3>
       <ul>
         <li><strong>Maior desconto:</strong> desconto percentual em relação ao valor de avaliação/ajustado.</li>
-        <li><strong>Maior lucro R$:</strong> lucro estimado em reais.</li>
-        <li><strong>Maior lucro %:</strong> lucro estimado como porcentagem do valor de avaliação/ajustado.</li>
+        <li><strong>Lucro estimado (R$):</strong> lucro estimado em reais.</li>
+        <li><strong>Lucro estimado (%):</strong> lucro estimado como porcentagem do valor de avaliação/ajustado.</li>
         <li><strong>Menor/maior preço:</strong> preço pedido pela fonte.</li>
         <li><strong>Endereço:</strong> ordem alfabética por UF, cidade, bairro e endereço.</li>
       </ul>
