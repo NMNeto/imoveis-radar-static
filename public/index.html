@@ -4,12 +4,21 @@
   <script src="/static/gtm-loader.js"></script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Busca Imóveis</title>
-  <meta name="description" content="Radar de imóveis com desconto da Caixa, Banco do Brasil, Santander e Itaú. Filtre por estado, cidade, bairro, preço, desconto, lucro estimado e financiamento.">
-  <meta name="theme-color" content="#0b6b57">
-  <meta property="og:title" content="Busca Imóveis">
+  <title>Imovanta — busca de imóveis</title>
+  <meta name="description" content="Imovanta — radar de imóveis com desconto da Caixa, Banco do Brasil, Santander e Itaú. Filtre por estado, cidade, bairro, preço, desconto, lucro estimado e financiamento.">
+  <meta name="theme-color" content="#0b2f6f">
+  <link rel="canonical" href="https://imovanta.com.br/">
+  <meta property="og:title" content="Imovanta — busca de imóveis">
   <meta property="og:description" content="Radar de imóveis com desconto da Caixa, Banco do Brasil, Santander e Itaú.">
   <meta property="og:type" content="website">
+  <meta property="og:url" content="https://imovanta.com.br/">
+  <meta property="og:image" content="https://imovanta.com.br/static/logo-imovanta.png">
+  <meta property="og:image:width" content="900">
+  <meta property="og:image:height" content="268">
+  <link rel="icon" type="image/png" href="static/favicon.png">
+  <link rel="apple-touch-icon" href="static/apple-touch-icon.png">
+  <link rel="manifest" href="static/site.webmanifest">
+  <link rel="preload" as="image" href="static/logo-imovanta.png">
   <link rel="stylesheet" href="static/vendor/leaflet.css">
   <link rel="stylesheet" href="static/vendor/MarkerCluster.css">
   <link rel="stylesheet" href="static/vendor/MarkerCluster.Default.css">
@@ -19,11 +28,10 @@
   <header class="topbar">
     <div class="brand">
       <div class="brand-head">
-        <h1>Busca Imóveis</h1>
+        <h1 class="brand-logo"><img src="static/logo-imovanta.png" alt="Imovanta" width="900" height="268"></h1>
         <span id="data-meta" class="muted"></span>
         <span id="loading-status" class="loading-status" role="status" aria-live="polite"></span>
       </div>
-      <span id="update-status" class="status"></span>
     </div>
     <div class="actions">
       <button id="btn-notice" class="btn icon-action" type="button" title="Aviso">
@@ -265,7 +273,7 @@
   <dialog id="help-dialog" class="help-dialog" aria-labelledby="help-title">
     <div class="help-form">
       <div class="dialog-head">
-        <h2 id="help-title">Ajuda — como usar o Busca Imóveis</h2>
+        <h2 id="help-title">Ajuda — como usar o Imovanta</h2>
         <button id="btn-help-close" class="btn small" type="button">Fechar</button>
       </div>
 
@@ -430,7 +438,7 @@ lucro %  = 28.000 / 200.000 * 100 = 14%</code></pre>
         <button id="btn-feedback-close" class="btn small" type="button">Fechar</button>
       </div>
       <p class="muted feedback-hint">
-        Conte o que podemos melhorar no Busca Imóveis. As respostas são vistas
+        Conte o que podemos melhorar no Imovanta. As respostas são vistas
         apenas pelo responsável pelo site. O formulário é hospedado pelo Google
         Forms e segue as políticas do Google.
       </p>

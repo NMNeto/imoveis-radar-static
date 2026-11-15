@@ -12,7 +12,7 @@
   Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
   Cross-Origin-Opener-Policy: same-origin
   Cross-Origin-Resource-Policy: same-origin
-  Access-Control-Allow-Origin: https://imoveis-radar-static.pages.dev
+  Access-Control-Allow-Origin: https://imovanta.com.br
   X-Permitted-Cross-Domain-Policies: none
 
 /.well-known/security.txt
