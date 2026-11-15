@@ -43,6 +43,61 @@ function emptyLocal() {
   };
 }
 
+function asRecord(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
+function asIdMap(value) {
+  const result = {};
+  for (const [id, enabled] of Object.entries(asRecord(value))) {
+    if (id && enabled) result[id] = true;
+  }
+  return result;
+}
+
+function asLocations(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((entry) => entry && typeof entry === "object" && !Array.isArray(entry))
+    .map((entry) => ({
+      cidade: typeof entry.cidade === "string" ? entry.cidade.trim() : "",
+      bairro:
+        typeof entry.bairro === "string" && entry.bairro.trim()
+          ? entry.bairro.trim()
+          : "all",
+      endereco:
+        typeof entry.endereco === "string" && entry.endereco.trim()
+          ? entry.endereco.trim()
+          : "all",
+    }))
+    .filter((entry) => entry.cidade);
+}
+
+function asSettings(value) {
+  const record = asRecord(value);
+  const settings = {};
+  for (const key of ["taxa_venda", "custo_fixo", "custo_fixo_modo", "fator_preco"]) {
+    if (Object.prototype.hasOwnProperty.call(record, key)) {
+      settings[key] = record[key];
+    }
+  }
+  return Object.keys(settings).length ? settings : null;
+}
+
+function asMarketValues(value) {
+  const result = {};
+  for (const [id, raw] of Object.entries(asRecord(value))) {
+    if (!id) continue;
+    if (raw === null) {
+      result[id] = null;
+      continue;
+    }
+    const numeric = Number(raw);
+    if (Number.isFinite(numeric) && numeric > 0) result[id] = numeric;
+  }
+  return result;
+}
+
 function loadLocalOverrides() {
   const base = emptyLocal();
   try {
@@ -51,16 +106,14 @@ function loadLocalOverrides() {
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return base;
     return {
-      marketValues: parsed.marketValues || {},
-      excludedIds: parsed.excludedIds || {},
-      unexcludedIds: parsed.unexcludedIds || {},
-      excludeLocations: Array.isArray(parsed.excludeLocations)
-        ? parsed.excludeLocations
-        : [],
+      marketValues: asMarketValues(parsed.marketValues),
+      excludedIds: asIdMap(parsed.excludedIds),
+      unexcludedIds: asIdMap(parsed.unexcludedIds),
+      excludeLocations: asLocations(parsed.excludeLocations),
       removedLocations: Array.isArray(parsed.removedLocations)
-        ? parsed.removedLocations
+        ? parsed.removedLocations.filter((entry) => typeof entry === "string")
         : [],
-      settings: parsed.settings || null,
+      settings: asSettings(parsed.settings),
     };
   } catch (error) {
     return base;
@@ -1789,7 +1842,7 @@ function cardHtml(item) {
       </a>
       <div class="card-body">
         <div class="price-row">
-          <strong>${priceLabel(item)}</strong>
+          <strong>${escapeHtml(priceLabel(item))}</strong>
           ${valuation}
         </div>
         ${customValue}
@@ -1909,7 +1962,7 @@ function popupHtml(item) {
   return `
     <div class="popup">
       ${image ? `<img src="${escapeHtml(image)}" alt="" loading="lazy" referrerpolicy="no-referrer" data-fallback="hide">` : ""}
-      <strong>${priceLabel(item)}</strong>
+      <strong>${escapeHtml(priceLabel(item))}</strong>
       <div class="line">${discountLabel(item)} · ${profit}</div>
       <div class="line">${escapeHtml(item.endereco)}<br>${escapeHtml(item.bairro)} — ${escapeHtml(item.cidade)}/${escapeHtml(item.uf)}</div>
       <div class="line">${escapeHtml(sourceLabel(item))} · ${escapeHtml(item.modalidade || "")} · ID ${escapeHtml(item.id_fonte || item.id)}</div>
