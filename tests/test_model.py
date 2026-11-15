@@ -6,6 +6,7 @@ from imoveis_radar.model import (
     build_exclusion_index,
     build_item,
     build_meta,
+    build_stats,
     filter_items,
     load_settings,
     normalize_market_values,
@@ -103,3 +104,51 @@ def test_meta_shape(paths):
     assert meta["ufs"] == ["SP"]
     assert meta["fontes"][0]["id"] == "caixa"
     assert meta["settings"]["taxa_venda"] == 0.06
+    assert meta["ruas_geocodificadas"] == 0
+    assert "bairros_geocodificados" in meta
+
+
+def test_stats_conta_precisao_endereco_e_rua():
+    items = [
+        {
+            "fonte": "caixa",
+            "preco": 100.0,
+            "uf": "SP",
+            "excluido": False,
+            "geo_precisao": "rua",
+            "lat": -23.5,
+            "lng": -46.6,
+        },
+        {
+            "fonte": "caixa",
+            "preco": 200.0,
+            "uf": "SP",
+            "excluido": False,
+            "geo_precisao": "endereco",
+            "lat": -23.5,
+            "lng": -46.6,
+        },
+        {
+            "fonte": "caixa",
+            "preco": 300.0,
+            "uf": "SP",
+            "excluido": False,
+            "geo_precisao": "bairro",
+            "lat": -23.5,
+            "lng": -46.6,
+        },
+    ]
+    stats = build_stats(
+        items,
+        [],
+        [],
+        [],
+        [],
+        {"enabled": False},
+        {},
+        "hash",
+        "2026-11-14T00:00:00",
+    )
+    assert stats["precisao_geo"]["rua"] == 1
+    assert stats["precisao_geo"]["endereco"] == 1
+    assert stats["precisao_geo"]["bairro"] == 1

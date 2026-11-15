@@ -100,6 +100,27 @@ def _photon(query: str, timeout: int, city: str | None = None):
     return None
 
 
+def search_detailed(query: str, timeout: int = 20, limit: int = 3):
+    """Resultados do Nominatim com detalhes de endereço (``jsonv2``).
+
+    Diferente de :func:`search`, devolve a lista crua de resultados para que o
+    chamador possa validar cidade/UF e classificar a precisão.  Retorna
+    ``RATE_LIMITED`` quando a API pede para desacelerar.
+    """
+    params = {
+        "format": "jsonv2",
+        "limit": limit,
+        "countrycodes": "br",
+        "addressdetails": 1,
+        "q": query,
+    }
+    response = _request(NOMINATIM_URL, params, timeout)
+    if response.status_code in (429, 503):
+        return RATE_LIMITED
+    response.raise_for_status()
+    return response.json() or []
+
+
 def search(query: str, timeout: int = 20, city: str | None = None):
     """Retorna ``{"lat", "lng", "fonte"}`` do primeiro resultado, ou None."""
     result = None

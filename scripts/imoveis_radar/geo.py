@@ -11,6 +11,11 @@ from datetime import datetime
 from pathlib import Path
 
 from . import geocode_client
+from .addresses import (
+    STREET_TYPES,
+    geocode_key as street_key,
+    split_address,
+)
 from .config import Paths, RunOptions
 from .safety import atomic_write_json
 from .text import norm
@@ -19,12 +24,20 @@ GEOCODE_CACHE_FILE = "geocode_cache.json"
 GEO_SEED_CITIES_FILE = "municipios.csv"
 GEO_SEED_STATES_FILE = "estados.csv"
 MISS_TTL_DAYS = 30
+STREET_CACHE_VERSION = 2
+STREET_RETRY_DAYS = 90
 
 logger = logging.getLogger(__name__)
 
 
 def _empty_cache() -> dict:
-    return {"version": 1, "updated": None, "points": {}, "misses": {}}
+    return {
+        "version": STREET_CACHE_VERSION,
+        "updated": None,
+        "points": {},
+        "misses": {},
+        "ruas": {},
+    }
 
 
 def load_geocode_cache(path: Path) -> dict:
@@ -36,11 +49,22 @@ def load_geocode_cache(path: Path) -> dict:
     except (OSError, ValueError):
         return _empty_cache()
     if isinstance(data, dict) and "points" in data:
-        data.setdefault("version", 1)
+        try:
+            version = int(data.get("version") or 0)
+        except (TypeError, ValueError):
+            version = 0
+        data["version"] = max(version, STREET_CACHE_VERSION)
         data.setdefault("misses", {})
+        data.setdefault("ruas", {})
         return data
     if isinstance(data, dict):
-        return {"version": 1, "updated": None, "points": data, "misses": {}}
+        return {
+            "version": STREET_CACHE_VERSION,
+            "updated": None,
+            "points": data,
+            "misses": {},
+            "ruas": {},
+        }
     return _empty_cache()
 
 
@@ -120,6 +144,107 @@ def geocode_key(uf, cidade, bairro="") -> str:
     return f"{norm(uf)}|{norm(cidade)}|{norm(bairro)}"
 
 
+# Palavras que, sozinhas, não identificam uma via.
+_STREET_NOISE = {
+    "LOTE",
+    "LOT",
+    "QUADRA",
+    "QD",
+    "SETOR",
+    "LOTEAMENTO",
+    "CONJUNTO",
+    "CONJ",
+    "CONDOMINIO",
+    "COND",
+    "SEM DENOMINACAO",
+    "SN",
+    "S/N",
+    "S N",
+}
+_CONNECTORS = {"DE", "DA", "DO", "DAS", "DOS", "E", "NO", "NA", "NOS", "NAS"}
+_PRECISION_RANK = {
+    "endereco": 4,
+    "rua": 3,
+    "bairro": 2,
+    "cidade": 1,
+    "estado": 0,
+}
+
+
+def is_useful_street(logradouro: str) -> bool:
+    """Diz se o logradouro tem nome suficiente para valer uma consulta."""
+    text = norm(logradouro).strip()
+    if not text or text in _STREET_NOISE:
+        return False
+    type_words = set(STREET_TYPES) | set(STREET_TYPES.values())
+    meaningful = [
+        token
+        for token in text.split()
+        if token not in type_words and token not in _CONNECTORS
+    ]
+    if not meaningful:
+        return False
+    return not all(token in _STREET_NOISE for token in meaningful)
+
+
+def item_street_key(item: dict) -> str:
+    """Chave de geocodificação por UF + cidade + logradouro do imóvel."""
+    parts = split_address(item.get("endereco", ""))
+    if not is_useful_street(parts.logradouro):
+        return ""
+    return street_key(
+        item.get("uf", ""), item.get("cidade", ""), parts.logradouro
+    )
+
+
+def usable_street_point(entry) -> tuple[float, float, str] | None:
+    """Coordenada utilizável de rua: só ``endereco`` ou ``rua``."""
+    if not isinstance(entry, dict):
+        return None
+    if entry.get("status") != "ok":
+        return None
+    precision = entry.get("precisao")
+    if precision not in ("endereco", "rua"):
+        return None
+    try:
+        return float(entry["lat"]), float(entry["lng"]), precision
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def set_bairro_point(
+    cache: dict,
+    uf: str,
+    cidade: str,
+    bairro: str,
+    lat,
+    lng,
+    fonte: str = "nominatim",
+) -> bool:
+    """Grava/atualiza o centroide de um bairro sem rebaixar a precisão."""
+    if not bairro:
+        return False
+    try:
+        lat_value, lng_value = float(lat), float(lng)
+    except (TypeError, ValueError):
+        return False
+    points = cache.setdefault("points", {})
+    key = geocode_key(uf, cidade, bairro)
+    existing = points.get(key)
+    if existing and _PRECISION_RANK.get(existing.get("precisao"), -1) >= _PRECISION_RANK["bairro"]:
+        return False
+    point = {
+        "lat": lat_value,
+        "lng": lng_value,
+        "precisao": "bairro",
+        "fonte": fonte,
+    }
+    if existing == point:
+        return False
+    points[key] = point
+    return True
+
+
 def is_geocode_miss(cache: dict, key: str, max_age_days: int = MISS_TTL_DAYS) -> bool:
     miss = cache.get("misses", {}).get(key)
     if not miss:
@@ -151,12 +276,27 @@ def _jitter(seed: str, lat: float, lng: float, radius: float):
 
 
 def attach_coordinates(item: dict, cache: dict) -> None:
-    """Anexa coordenadas com precisão bairro → cidade → estado."""
+    """Anexa coordenadas com precisão rua → bairro → cidade → estado."""
+    street = cache.get("ruas", {}).get(item_street_key(item))
+    street_point = usable_street_point(street)
+    if street_point:
+        lat0, lng0, precision = street_point
+        radius = 0.0002 if precision == "endereco" else 0.0005
+        lat, lng = _jitter(item["id"], lat0, lng0, radius)
+        item["lat"] = lat
+        item["lng"] = lng
+        item["geo_precisao"] = precision
+        item["geo_fonte"] = street.get("fonte") or "nominatim"
+        return
+
     points = cache.get("points", {})
+    uf = item.get("uf", "")
+    cidade = item.get("cidade", "")
+    bairro = item.get("bairro", "")
     candidates = (
-        (geocode_key(item["uf"], item["cidade"], item["bairro"]), "bairro", 0.006),
-        (geocode_key(item["uf"], item["cidade"], ""), "cidade", 0.03),
-        (geocode_key(item["uf"], "", ""), "estado", 0.15),
+        (geocode_key(uf, cidade, bairro), "bairro", 0.006),
+        (geocode_key(uf, cidade, ""), "cidade", 0.03),
+        (geocode_key(uf, "", ""), "estado", 0.15),
     )
     for key, precision, radius in candidates:
         point = points.get(key)
@@ -198,7 +338,7 @@ def missing_pairs(items: list[dict], cache: dict, max_items: int = 0) -> list[di
         )
 
     for item in items:
-        if item.get("geo_precisao") == "bairro":
+        if item.get("geo_precisao") in ("endereco", "rua", "bairro"):
             continue
         if item.get("bairro"):
             add(item.get("uf", ""), item.get("cidade", ""), item.get("bairro", ""), "bairro")

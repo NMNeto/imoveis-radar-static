@@ -66,6 +66,7 @@ na sua máquina.
 ├── scripts/
 │   ├── atualizar_imoveis.py    # entrada do atualizador
 │   ├── importar_config.py      # aplica config-local.json ao repositório
+│   ├── normalizar_enderecos.py # normaliza endereços e gera fila de geocodificação
 │   ├── dev_server.py           # pré-visualização local com /api/image
 │   └── imoveis_radar/          # núcleo (coleta, modelo, geo, publicação)
 ├── data/
@@ -139,6 +140,109 @@ python -m pytest -q
 Cobrem normalização, leitura dos quatro CSVs, pontuação, exclusões, geocache,
 diff/histórico, publicação atômica, idempotência, importação de configuração e
 o fluxo completo do CLI.
+
+## Normalizar endereços para geocodificação
+
+Antes de consultar o geocodificador, normalize a planilha para não repetir a
+mesma rua em vários imóveis (quadra, lote, apartamento e bloco não mudam o
+logradouro):
+
+```bash
+python scripts/normalizar_enderecos.py "Planilha Endereços.csv"
+```
+
+Gera, ao lado da entrada, `*_normalizado.csv` (planilha original + colunas de
+logradouro, número, complemento, cidade/bairro normalizados e chave) e
+`*_geocodificacao.csv` (uma linha por endereço único, com a contagem de
+imóveis). Use `--sem-numero` para agrupar apenas pelo logradouro e reduzir
+ainda mais as consultas.
+
+## Geocodificar a planilha normalizada
+
+Depois de normalizar, geocodifique com o Nominatim. Por padrão é feita **uma
+consulta por logradouro** (não por número) e o resultado é aplicado a todos os
+imóveis daquela rua:
+
+```bash
+python scripts/geocodificar_planilha.py "Planilha Endereços_normalizado.csv"
+```
+
+Gera `*_geocodificado.csv` com as colunas `Status geocodificação`,
+`Latitude/Longitude geocodificada`, `Precisão geocodificada`,
+`Fonte geocodificação`, `Endereço retornado` e `Distância da sede (km)`, além
+de um cache `*_geocache.json` que permite **retomar** a execução de onde parou
+(basta rodar o mesmo comando de novo).
+
+A precisão é classificada como:
+
+| Valor | Significado |
+| --- | --- |
+| `endereco` | o número de porta foi encontrado |
+| `rua` | a via foi localizada, sem o número |
+| `bairro` | só o bairro foi localizado |
+| `aproximado` | a cidade confere, mas a via não pôde ser confirmada |
+
+Cada candidato é validado por UF, município e semelhança do nome da rua;
+resultados de outra cidade e centroides de município são descartados. Quando a
+cidade não aparece nos campos de endereço, ela é conferida no `display_name`
+(ignorando o nome do estado).
+
+Opções úteis:
+
+```bash
+# testar rápido (50 consultas novas)
+python scripts/geocodificar_planilha.py planilha.csv --limite 50
+
+# consultar cada número de porta (mais preciso e mais demorado)
+python scripts/geocodificar_planilha.py planilha.csv --por-numero
+```
+
+O Nominatim é público e aceita no máximo **1 requisição por segundo** em um
+bulk único; o padrão de 1,05 s respeita esse limite. A execução é sequencial e o
+cache evita repetir consultas.
+
+## Geocodificação semanal de ruas e bairros
+
+O workflow **Melhorar precisão dos endereços**
+(`.github/workflows/geocodificar-ruas.yml`) roda aos domingos e melhora as
+coordenadas já publicadas sem atrasar a coleta diária:
+
+```bash
+python scripts/geocodificar_ruas.py --max-minutos 180 --intervalo 16 --json
+```
+
+- `--intervalo 16` = **4 requisições por minuto**, o limite da política do
+  Nominatim para scripts recorrentes.
+- A fila prioriza ruas novas, depois retentativas vencidas (90 dias) e, dentro
+  disso, ruas com mais imóveis e imóveis ainda sem coordenada.
+- Só resultados `endereco`/`rua` viram coordenada de rua. O centroide do bairro
+  é gravado no cache de localidades para melhorar o fallback.
+- Ao terminar, o workflow roda `atualizar_imoveis.py --skip-collect
+  --no-geocode`, valida e commita `data/` + `public/`.
+
+O cache `data/geo/geocode_cache.json` tem duas seções:
+
+- `points`: bairros, cidades e estados;
+- `ruas`: logradouros, com `proxima_tentativa` para o ciclo de 90 dias.
+
+Após um bulk local, importe o resultado uma única vez:
+
+```bash
+python scripts/importar_geocache_local.py \
+  --planilha "Planilha Endereços_normalizado_geocodificado.csv" \
+  --cache-local "Planilha Endereços_normalizado_geocache.json"
+```
+
+O importador copia ruas terminais, registra ruas de baixa precisão sem
+coordenada, importa os centroides de bairro e é idempotente. A coleta diária usa
+a melhor informação disponível:
+
+```
+rua → bairro → cidade → estado
+```
+
+Imóveis de ruas ainda não geocodificadas usam bairro/cidade e entram
+automaticamente na fila do domingo seguinte.
 
 ## Configuração
 

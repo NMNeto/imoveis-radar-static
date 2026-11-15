@@ -2014,11 +2014,15 @@ function renderMap() {
 function updateGeoStatus() {
   const points = state.items.filter((item) => item.lat != null && item.lng != null).length;
   const total = state.items.length;
+  const endereco = state.items.filter((item) => item.geo_precisao === "endereco").length;
+  const rua = state.items.filter((item) => item.geo_precisao === "rua").length;
   const bairro = state.items.filter((item) => item.geo_precisao === "bairro").length;
   const cidade = state.items.filter((item) => item.geo_precisao === "cidade").length;
   const estado = state.items.filter((item) => item.geo_precisao === "estado").length;
   let text = `${points.toLocaleString("pt-BR")} de ${total.toLocaleString("pt-BR")} no mapa`;
   const parts = [];
+  if (endereco) parts.push(`${endereco.toLocaleString("pt-BR")} endereço`);
+  if (rua) parts.push(`${rua.toLocaleString("pt-BR")} rua`);
   if (bairro) parts.push(`${bairro.toLocaleString("pt-BR")} bairro`);
   if (cidade) parts.push(`${cidade.toLocaleString("pt-BR")} cidade`);
   if (estado) parts.push(`${estado.toLocaleString("pt-BR")} estado`);

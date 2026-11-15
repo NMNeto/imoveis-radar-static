@@ -1,0 +1,84 @@
+name: Melhorar precisão dos endereços
+
+# Rotina semanal de domingo. A coleta diária continua no workflow
+# "Atualizar imóveis"; este job só melhora as coordenadas já publicadas.
+on:
+  schedule:
+    - cron: "0 12 * * 0"
+  workflow_dispatch:
+    inputs:
+      max_minutos:
+        description: "Tempo máximo de consultas nesta execução"
+        default: "180"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: atualizar-imoveis
+  cancel-in-progress: false
+
+env:
+  TZ: America/Sao_Paulo
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  ruas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar dependências Python
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Testes automatizados
+        run: python -m pytest -q
+
+      - name: Geocodificar ruas e bairros
+        env:
+          MAX_MINUTOS: ${{ inputs.max_minutos || '180' }}
+        run: |
+          set -o pipefail
+          python scripts/geocodificar_ruas.py \
+            --max-minutos "$MAX_MINUTOS" \
+            --intervalo 16 \
+            --json | tee /tmp/ruas.json
+
+      - name: Republicar coordenadas
+        run: python scripts/atualizar_imoveis.py --skip-collect --no-geocode --json
+
+      - name: Validar JSON publicado
+        run: python scripts/atualizar_imoveis.py --validate-only
+
+      - name: Commitar cache e dados
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data public
+          if git diff --cached --quiet; then
+            echo "Sem alterações para commitar."
+            exit 0
+          fi
+          git commit -m "geo: precisão de ruas e bairros $(date -u '+%Y-%m-%d')"
+          git pull --rebase --autostash
+          git push
+
+      - name: Disparar deploy hook da Cloudflare (opcional)
+        env:
+          DEPLOY_HOOK: ${{ secrets.CLOUDFLARE_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -n "$DEPLOY_HOOK" ]; then
+            curl --fail --silent --show-error -X POST "$DEPLOY_HOOK"
+          fi

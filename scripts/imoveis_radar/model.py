@@ -383,6 +383,17 @@ def build_meta(
         "exclude_ids_count": len(exclude_ids),
         "exclude_locations_count": len(exclude_locations),
         "geocode_cached": len(cache.get("points", {})),
+        "bairros_geocodificados": sum(
+            1
+            for point in cache.get("points", {}).values()
+            if point.get("precisao") == "bairro"
+        ),
+        "ruas_geocodificadas": sum(
+            1
+            for entry in cache.get("ruas", {}).values()
+            if entry.get("status") == "ok"
+            and entry.get("precisao") in ("endereco", "rua")
+        ),
         "geocode_misses": len(cache.get("misses", {})),
         "geocode_updated": cache.get("updated"),
         "settings": settings,
@@ -443,7 +454,7 @@ def build_stats(
             (precision or "nao_informado"): sum(
                 1 for item in items if item.get("geo_precisao") == precision
             )
-            for precision in ("bairro", "cidade", "estado", None)
+            for precision in ("endereco", "rua", "bairro", "cidade", "estado", None)
         },
         "fontes": by_source,
         "preco": {
