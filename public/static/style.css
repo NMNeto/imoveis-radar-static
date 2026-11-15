@@ -539,6 +539,25 @@ main {
 .map-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .map-status { display: inline-flex; align-items: center; gap: 4px; min-width: 0; }
 
+.layer-switch {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.layer-switch .layer-btn {
+  border: 0;
+  border-radius: 0;
+  background: #fff;
+  padding: 5px 8px;
+  color: var(--ink);
+  font-size: 12px;
+}
+.layer-switch .layer-btn + .layer-btn { border-left: 1px solid var(--line); }
+.layer-switch .layer-btn:hover { background: #f6f8f9; }
+.layer-switch .layer-btn.active { background: var(--accent); color: #fff; }
+
 .empty {
   padding: 40px 20px;
   text-align: center;
