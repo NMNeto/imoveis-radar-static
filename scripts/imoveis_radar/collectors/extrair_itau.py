@@ -13,6 +13,7 @@ import logging
 import os
 import re
 import tempfile
+import unicodedata
 from datetime import datetime
 from urllib.parse import urlparse
 
@@ -67,6 +68,90 @@ els => els.map(card => {
 
 def limpar(texto):
     return re.sub(r"\s+", " ", str(texto or "")).strip()
+
+
+def normalizar_endereco(texto):
+    text = unicodedata.normalize("NFKD", str(texto or ""))
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    return " ".join(text.split()).upper()
+
+
+def parse_endereco_detalhe(address, cidade, uf):
+    """Remove cidade/UF do endereço completo exibido na página de detalhes.
+
+    Exemplo:
+      "ESTRADA BRASILIO DE LIMA, PARQUE BOTUJURU, 1760,
+       SAO BERNARDO DO CAMPO - SP"
+    vira:
+      "ESTRADA BRASILIO DE LIMA, PARQUE BOTUJURU, 1760"
+    """
+    address = limpar(address)
+    if not address:
+        return ""
+    addr = address
+    suffix = f" - {limpar(uf)}" if limpar(uf) else ""
+    if suffix and normalizar_endereco(addr).endswith(normalizar_endereco(suffix)):
+        addr = addr[: -len(suffix)].strip()
+    parts = [part.strip() for part in addr.split(",") if part.strip()]
+    if parts and cidade and normalizar_endereco(parts[-1]) == normalizar_endereco(cidade):
+        parts.pop()
+    return ", ".join(parts)
+
+
+ENDERECO_JS = """
+() => {
+    const icon = document.querySelector('app-icon[icon="place_base"]');
+    const p = icon?.parentElement?.querySelector('p[title]');
+    return (p?.getAttribute('title') || '').trim();
+}
+"""
+
+
+def extrair_endereco_detalhe(page, link):
+    page.goto(link, wait_until="domcontentloaded", timeout=60000)
+    page.wait_for_function(
+        """() => document.querySelector('app-icon[icon="place_base"]') !== null
+             || document.body.innerText.includes('Não foi possível detalhar o ativo')""",
+        timeout=12000,
+    )
+    return limpar(page.evaluate(ENDERECO_JS))
+
+
+def enriquecer_enderecos(page, rows):
+    if os.environ.get("ITAU_DETAIL_ADDRESSES", "1") == "0":
+        return rows
+    try:
+        limite = int(os.environ.get("MAX_ITAU_DETAILS", "0") or 0)
+    except ValueError:
+        limite = 0
+    alvo = rows[:limite] if limite > 0 else rows
+    total = len(alvo)
+    extraidos = 0
+    falhas = 0
+    for index, row in enumerate(alvo, 1):
+        link = row.get("Link de acesso")
+        if not link:
+            continue
+        try:
+            endereco = extrair_endereco_detalhe(page, link)
+            parsed = parse_endereco_detalhe(endereco, row.get("Cidade"), row.get("UF"))
+            if parsed:
+                row["Endereço"] = parsed
+                extraidos += 1
+        except Exception as exc:
+            falhas += 1
+            logging.debug(
+                "Endereço não extraído para %s: %s", row.get("Nº do imóvel"), exc
+            )
+        if index % 25 == 0:
+            logging.info("Endereços: %s/%s", index, total)
+    logging.info(
+        "Endereços completos: %s/%s extraídos (%s falhas)",
+        extraidos,
+        total,
+        falhas,
+    )
+    return rows
 
 
 def parse_card(card):
@@ -201,7 +286,10 @@ def coletar():
                     )
                 except Exception:
                     page.wait_for_timeout(2500)
-            return list(found.values())
+            rows = list(found.values())
+            logging.info("Buscando endereços completos nos detalhes...")
+            enriquecer_enderecos(page, rows)
+            return rows
         finally:
             browser.close()
 

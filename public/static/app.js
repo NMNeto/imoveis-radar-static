@@ -202,6 +202,64 @@ function shortText(value, limit = 160) {
   return `${text.slice(0, limit).trimEnd()}…`;
 }
 
+const ADDRESS_SMALL_WORDS = new Set([
+  "de", "da", "do", "das", "dos", "e", "em", "na", "no", "nas", "nos",
+]);
+const ADDRESS_UPPER_WORDS = new Set([
+  "N", "Nº", "N°", "S/N", "S/Nº", "SN", "BL", "CJ", "QD", "LT", "KM", "CEP", "R",
+]);
+
+function titleCaseAddress(value) {
+  const text = String(value ?? "").replace(/\s+/g, " ").trim();
+  if (!text) return "";
+  return text
+    .split(" ")
+    .map((word, index) => {
+      const bare = word.replace(/^[("'\[\]]+|[)"'\].,;:]+$/g, "");
+      if (!bare) return word;
+      const lower = bare.toLocaleLowerCase("pt-BR");
+      const upper = bare.toLocaleUpperCase("pt-BR");
+      if (ADDRESS_UPPER_WORDS.has(upper)) return word;
+      if (index > 0 && ADDRESS_SMALL_WORDS.has(lower)) {
+        return word.toLocaleLowerCase("pt-BR");
+      }
+      return word
+        .toLocaleLowerCase("pt-BR")
+        .replace(/(^|[("'’\[])(\p{L})/gu, (_, prefix, letter) =>
+          `${prefix}${letter.toLocaleUpperCase("pt-BR")}`
+        );
+    })
+    .join(" ");
+}
+
+function cleanAddressText(value, limit = 160) {
+  return shortText(value, limit)
+    .replace(/\s*,\s*/g, ", ")
+    .replace(/\s*;\s*/g, ", ")
+    .replace(/\s*-\s*/g, " - ")
+    .replace(/,+$/g, "")
+    .trim();
+}
+
+function buildAddress(item) {
+  const street = titleCaseAddress(cleanAddressText(item.endereco, 160));
+  const bairro = titleCaseAddress(item.bairro || "");
+  const cidade = titleCaseAddress(item.cidade || "");
+  const uf = String(item.uf || "").toUpperCase();
+  const cityUf = cidade && uf ? `${cidade}/${uf}` : cidade || uf;
+  const includeBairro = Boolean(bairro) && !normText(street).endsWith(normText(bairro));
+  const place = [includeBairro ? bairro : "", cityUf].filter(Boolean).join(" - ");
+  const full = [street, place].filter(Boolean).join(", ");
+  return {
+    street,
+    place,
+    full,
+    googleUrl: street && full
+      ? `https://www.google.com/search?q=${encodeURIComponent(full)}`
+      : "",
+  };
+}
+
 function safeUrl(value) {
   const text = String(value || "").trim();
   if (!/^https?:\/\//i.test(text)) return "";
@@ -1822,8 +1880,7 @@ function cardHtml(item) {
     : "";
   const profitClass = item.lucro != null && item.lucro < 0 ? "negative" : "";
   const bankLabel = sourceLabel(item);
-  const street = shortText(item.endereco, 160);
-  const place = shortText(`${item.bairro || ""} — ${item.cidade || ""}/${item.uf || ""}`, 90);
+  const address = buildAddress(item);
   const valuation = item.valor_avaliacao == null
     ? `<span class="muted valuation">Avaliação ${escapeHtml(bankLabel)}: sem avaliação</span>`
     : `<span class="muted valuation" title="Valor de avaliação da fonte">Avaliação ${escapeHtml(bankLabel)}: ${formatBRL(item.valor_avaliacao)}</span>`;
@@ -1848,8 +1905,13 @@ function cardHtml(item) {
         ${customValue}
         ${profit}
         <div class="addr">
-          <span class="addr-street" title="${escapeHtml(street)}">${escapeHtml(street)}</span>
-          <span class="addr-place" title="${escapeHtml(place)}">${escapeHtml(place)}</span>
+          ${address.googleUrl
+            ? `<a class="addr-link" href="${escapeHtml(address.googleUrl)}" target="_blank" rel="noopener noreferrer" title="Buscar no Google: ${escapeHtml(address.full)}" aria-label="Buscar no Google: ${escapeHtml(address.full)}">
+                 <span class="addr-line" title="${escapeHtml(address.full)}">${escapeHtml(address.full)}</span>
+               </a>`
+            : address.full
+              ? `<span class="addr-line" title="${escapeHtml(address.full)}">${escapeHtml(address.full)}</span>`
+              : `<span class="addr-line muted">Endereço não informado</span>`}
         </div>
         <div class="tags">
           ${sourceBadge(item)}
@@ -1958,14 +2020,19 @@ function renderCards() {
 function popupHtml(item) {
   const image = imageSrc(item);
   const link = safeUrl(item.link);
+  const address = buildAddress(item);
+  const popupAddress =
+    [address.street, address.place].filter(Boolean).map(escapeHtml).join("<br>") ||
+    "Endereço não informado";
   const profit = item.lucro == null ? "Lucro não calculado" : `Lucro ${formatBRL(item.lucro)}`;
   return `
     <div class="popup">
       ${image ? `<img src="${escapeHtml(image)}" alt="" loading="lazy" referrerpolicy="no-referrer" data-fallback="hide">` : ""}
       <strong>${escapeHtml(priceLabel(item))}</strong>
       <div class="line">${discountLabel(item)} · ${profit}</div>
-      <div class="line">${escapeHtml(item.endereco)}<br>${escapeHtml(item.bairro)} — ${escapeHtml(item.cidade)}/${escapeHtml(item.uf)}</div>
+      <div class="line">${popupAddress}</div>
       <div class="line">${escapeHtml(sourceLabel(item))} · ${escapeHtml(item.modalidade || "")} · ID ${escapeHtml(item.id_fonte || item.id)}</div>
+      ${address.googleUrl ? `<a href="${escapeHtml(address.googleUrl)}" target="_blank" rel="noopener noreferrer">Buscar endereço no Google →</a>` : ""}
       ${link ? `<a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">Ver oferta →</a>` : ""}
     </div>
   `;
