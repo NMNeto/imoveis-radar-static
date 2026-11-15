@@ -183,6 +183,10 @@
           <button class="info-btn" type="button" aria-label="Ajuda sobre geocodificação" aria-describedby="tip-geocodificar" data-tooltip-id="tip-geocodificar">ℹ️</button>
         </span>
         <div class="map-actions">
+          <div class="layer-switch" role="group" aria-label="Camada do mapa">
+            <button id="btn-layer-street" class="btn small layer-btn active" type="button" aria-pressed="true" title="Mapa de ruas">Mapa</button>
+            <button id="btn-layer-satellite" class="btn small layer-btn" type="button" aria-pressed="false" title="Imagens de satélite">Satélite</button>
+          </div>
           <button id="btn-map-filter" class="btn small" type="button">Filtrar pelo mapa</button>
           <button id="btn-map-clear" class="btn small hidden" type="button">Limpar área</button>
         </div>

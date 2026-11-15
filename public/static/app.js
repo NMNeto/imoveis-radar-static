@@ -7,6 +7,7 @@ const IMAGE_PLACEHOLDER = "static/placeholder.svg";
 const STORAGE_KEY = "imoveis-radar-static:overrides:v1";
 const NOTICE_KEY = "imoveis-radar-static:notice:v1";
 const ANALYTICS_KEY = "imoveis-radar-static:analytics-consent:v1";
+const MAP_LAYER_KEY = "imoveis-radar-static:map-layer:v1";
 const QUICK_PRESETS_KEY = "imoveis-radar-static:quick-presets:v1";
 const MOBILE_LAYOUT = "(max-width: 767px)";
 const FILTER_URL_KEYS = [
@@ -80,6 +81,8 @@ const state = {
   filters: { ...DEFAULTS },
   map: null,
   cluster: null,
+  tileLayers: null,
+  mapLayer: "street",
   fit: true,
   initialized: false,
   facets: null,
@@ -1917,6 +1920,49 @@ function popupHtml(item) {
 
 const BRAZIL_VIEW = { center: [-14.235, -51.925], zoom: 4 };
 
+const MAP_TILES = {
+  street: {
+    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    options: {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    },
+  },
+  satellite: {
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    options: {
+      maxZoom: 19,
+      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+    },
+  },
+};
+
+function updateMapLayerUI() {
+  for (const layer of ["street", "satellite"]) {
+    const button = $(`#btn-layer-${layer}`);
+    if (!button) continue;
+    const active = state.mapLayer === layer;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+  }
+}
+
+function setMapLayer(layer) {
+  const name = layer === "satellite" ? "satellite" : "street";
+  state.mapLayer = name;
+  if (state.map && state.tileLayers) {
+    for (const [key, tiles] of Object.entries(state.tileLayers)) {
+      if (key === name) {
+        if (!state.map.hasLayer(tiles)) tiles.addTo(state.map);
+      } else if (state.map.hasLayer(tiles)) {
+        state.map.removeLayer(tiles);
+      }
+    }
+  }
+  writeStoredValue(MAP_LAYER_KEY, name);
+  updateMapLayerUI();
+}
+
 function currentMapBbox() {
   if (!state.map) return "";
   const bounds = state.map.getBounds();
@@ -1965,10 +2011,13 @@ function initMap() {
     return;
   }
   state.map = L.map("map", { zoomControl: true }).setView(BRAZIL_VIEW.center, BRAZIL_VIEW.zoom);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-  }).addTo(state.map);
+  const storedLayer = readStoredValue(MAP_LAYER_KEY);
+  state.mapLayer = storedLayer === "satellite" ? "satellite" : "street";
+  state.tileLayers = {
+    street: L.tileLayer(MAP_TILES.street.url, MAP_TILES.street.options),
+    satellite: L.tileLayer(MAP_TILES.satellite.url, MAP_TILES.satellite.options),
+  };
+  state.tileLayers[state.mapLayer].addTo(state.map);
   state.cluster = L.markerClusterGroup({
     chunkedLoading: true,
     maxClusterRadius: 55,
@@ -1982,6 +2031,7 @@ function initMap() {
     scheduleFacets();
   });
   updateMapFilterUI();
+  updateMapLayerUI();
 }
 
 function renderMap() {
@@ -2484,6 +2534,8 @@ function bindEvents() {
     resizeMobileMap();
   });
   window.visualViewport?.addEventListener("resize", resizeMobileMap);
+  $("#btn-layer-street").addEventListener("click", () => setMapLayer("street"));
+  $("#btn-layer-satellite").addEventListener("click", () => setMapLayer("satellite"));
   $("#btn-map-filter").addEventListener("click", () => toggleMapFilter(!state.mapFilter));
   $("#btn-map-clear").addEventListener("click", () => toggleMapFilter(false));
   $("#btn-more").addEventListener("click", () => {
