@@ -211,10 +211,8 @@
         <button class="btn small" id="btn-config-close" type="button">Fechar</button>
       </div>
       <p class="muted">
-        Este site é estático: as alterações abaixo ficam salvas neste navegador.
-        Use <strong>Exportar</strong> para baixar um arquivo e aplicar a configuração
-        ao repositório, onde o script Python a incorpora na próxima atualização.
-        Use <code>all</code> como curinga em Bairro/Endereço.
+        Este site é estático: as alterações abaixo ficam salvas apenas neste
+        navegador. Use <code>all</code> como curinga em Bairro/Endereço.
       </p>
       <p class="muted">
         Cada lista começa com um exemplo que <strong>não corresponde a nenhum
@@ -226,7 +224,7 @@
         <label>Taxa Corretagem Venda (%)
           <input id="cfg-taxa-venda" type="number" min="0" max="100" step="0.01" inputmode="decimal">
         </label>
-        <label>Dívidas (Condomínio e IPTU)
+        <label>Dívidas (Condomínio, IPTU e ITBI)
           <div class="input-group">
             <select id="cfg-custo-modo">
               <option value="fixo">R$ fixo</option>
@@ -236,15 +234,16 @@
           </div>
         </label>
         <label>
-          <span class="field-label">Taxa Leilão (%)
-            <button class="info-btn" type="button" aria-label="Ajuda sobre a taxa de leilão" aria-describedby="tip-taxa-leilao" data-tooltip-id="tip-taxa-leilao">ℹ️</button>
+          <span class="field-label">Taxa do leiloeiro (%)
+            <button class="info-btn" type="button" aria-label="Ajuda sobre a taxa do leiloeiro" aria-describedby="tip-taxa-leilao" data-tooltip-id="tip-taxa-leilao">ℹ️</button>
           </span>
           <input id="cfg-fator-preco" type="number" min="0" step="0.01" inputmode="decimal">
         </label>
       </div>
       <p class="muted config-hint">
-        A Taxa Leilão é o prêmio aplicado ao preço em modalidades não online
-        (5% vira fator 1,05). Dívidas em % são calculadas sobre o valor de avaliação.
+        A Taxa do leiloeiro é a comissão aplicada ao preço em modalidades não
+        online (5% vira fator 1,05). Dívidas em % são calculadas sobre o valor
+        de avaliação; o padrão é 30%. Os valores são estimativas.
       </p>
       <h3 class="config-title">Listas</h3>
       <div class="config-grid">
@@ -264,7 +263,6 @@
       <div class="dialog-actions">
         <span id="config-msg" class="muted"></span>
         <button id="btn-config-reset" class="btn" type="button">Limpar ajustes locais</button>
-        <button id="btn-config-export" class="btn" type="button">Exportar</button>
         <button id="btn-config-save" class="btn primary" value="default" type="submit">Salvar neste navegador</button>
       </div>
     </form>
@@ -331,23 +329,25 @@
       <pre><code>desconto   = (valor_ajustado - preco) / valor_ajustado * 100
 
 fator      = 1 se a modalidade for Venda Online ou Venda Direta Online
-             senão fator_preco (padrão 1,05 = prêmio de 5%)
+             senão taxa do leiloeiro (padrão 1,05 = 5%)
 
-custo_fixo = custo_fixo (modo fixo)
-             ou valor_ajustado * custo_fixo / 100 (modo percentual)
+dividas    = valor_ajustado * percentual_dividas / 100 (padrão 30%)
+             ou valor fixo informado (modo R$ fixo)
 
-lucro      = (valor_ajustado - valor_ajustado * taxa_venda - custo_fixo)
+lucro      = (valor_ajustado - valor_ajustado * taxa_venda - dividas)
              - preco * fator
 
 lucro_pct  = lucro / valor_ajustado * 100</code></pre>
       <p><strong>Exemplo:</strong> valor de avaliação R$ 200.000, preço R$ 120.000,
-        modalidade Venda Online, taxa de venda 6% e dívidas fixas de R$ 40.000:</p>
-      <pre><code>desconto = (200.000 - 120.000) / 200.000 * 100 = 40%
-lucro    = (200.000 - 12.000 - 40.000) - 120.000 = 28.000
-lucro %  = 28.000 / 200.000 * 100 = 14%</code></pre>
+        modalidade Venda Online, taxa de venda 6% e dívidas estimadas em 30%:</p>
+      <pre><code>dividas  = 200.000 * 30% = 60.000
+desconto = (200.000 - 120.000) / 200.000 * 100 = 40%
+lucro    = (200.000 - 12.000 - 60.000) - 120.000 = 8.000
+lucro %  = 8.000 / 200.000 * 100 = 4%</code></pre>
       <p class="help-note">
         O lucro é uma <strong>estimativa para triagem</strong>, não uma garantia.
-        Custos de cartório, reforma, condomínio, IPTU, ocupação, dívidas e
+        A dívida de 30% é uma estimativa para condomínio, IPTU e ITBI; o valor
+        real varia por imóvel. Custos de cartório, reforma, ocupação, dívidas e
         riscos do leilão precisam ser confirmados no edital e na fonte original.
       </p>
 
@@ -370,16 +370,15 @@ lucro %  = 28.000 / 200.000 * 100 = 14%</code></pre>
       <p>
         A caixa <strong>Configurações</strong> altera as premissas e as listas
         usadas no cálculo e na exibição. As mudanças ficam salvas
-        <strong>neste navegador</strong>; use <strong>Exportar</strong> para
-        baixar <code>config-local.json</code> e aplicar ao repositório com
-        <code>scripts/importar_config.py</code>.
+        <strong>apenas neste navegador</strong> e não alteram o site para os
+        outros visitantes.
       </p>
       <ul>
         <li><strong>Taxa Corretagem Venda (%):</strong> percentual descontado do
           valor de avaliação no cálculo do lucro.</li>
-        <li><strong>Dívidas (Condomínio e IPTU):</strong> valor fixo em reais ou
-          percentual do valor de avaliação.</li>
-        <li><strong>Taxa Leilão (%):</strong> prêmio aplicado ao preço em
+        <li><strong>Dívidas (Condomínio, IPTU e ITBI):</strong> estimativa em
+          percentual do valor de avaliação (padrão 30%) ou valor fixo em reais.</li>
+        <li><strong>Taxa do leiloeiro (%):</strong> comissão aplicada ao preço em
           modalidades que não são venda online. 5% vira fator 1,05.</li>
         <li><strong>IDs excluídos:</strong> um ID por linha.</li>
         <li><strong>Locais excluídos:</strong> <code>Cidade,Bairro,Endereço</code>
@@ -399,12 +398,15 @@ lucro %  = 28.000 / 200.000 * 100 = 14%</code></pre>
       <h3>Mapa e localização</h3>
       <ul>
         <li>Os pontos são <strong>aproximados</strong>. A precisão pode ser
-          bairro, cidade ou estado; o endereço exato aparece no cartão.</li>
-        <li>Os bairros novos são geocodificados durante a atualização
-          automática, com cache e limites de uso. A precisão é aproximada:
-          bairro, cidade ou estado.</li>
-        <li><strong>Filtrar pelo mapa</strong> usa a área visível;
-          <strong>Limpar área</strong> remove esse filtro.</li>
+          endereço, rua, bairro, cidade ou estado; o endereço completo aparece
+          no cartão.</li>
+        <li>Os pontos novos são geocodificados durante a atualização
+          automática, com cache e limites de uso. A localização pode ser
+          aproximada e <strong>deve ser conferida na fonte e, se possível,
+          pessoalmente</strong> antes de qualquer decisão.</li>
+        <li>Clique no endereço do cartão para abrir uma busca no Google por ele.</li>
+        <li><strong>Filtrar pelo mapa</strong> usa a área visível e já vem
+          ativado por padrão; <strong>Limpar área</strong> remove esse filtro.</li>
       </ul>
 
       <h3>Fontes, atualização e limites</h3>
@@ -428,6 +430,9 @@ lucro %  = 28.000 / 200.000 * 100 = 14%</code></pre>
         <strong>Aviso</strong>. Também usamos armazenamento local para
         preferências e para não repetir o aviso.
       </p>
+      <div class="dialog-actions help-actions">
+        <button id="btn-help-close-bottom" class="btn primary" type="button">Fechar</button>
+      </div>
     </div>
   </dialog>
 
@@ -491,7 +496,7 @@ lucro %  = 28.000 / 200.000 * 100 = 14%</code></pre>
 
   <span id="tip-desconto-min" class="sr-only">Desconto calculado mínimo. Imóveis sem avaliação só aparecem se o mínimo for 0.</span>
   <span id="tip-lucro-min" class="sr-only">Lucro estimado mínimo. Imóveis sem avaliação só aparecem se o mínimo for 0.</span>
-  <span id="tip-taxa-leilao" class="sr-only">Prêmio no preço fora de venda online. 5% vira fator 1,05.</span>
+  <span id="tip-taxa-leilao" class="sr-only">Taxa do leiloeiro aplicada ao preço fora de venda online. 5% vira fator 1,05.</span>
   <span id="tip-ajustar-valor" class="sr-only">Informe o valor que você acredita que o imóvel vale na venda. Usado só neste navegador para recalcular desconto e lucro.</span>
   <span id="tip-geocodificar" class="sr-only">Os pontos são aproximados (bairro, cidade ou estado) e atualizados automaticamente.</span>
   <div id="tooltip-bubble" class="tooltip-bubble" role="tooltip" hidden></div>

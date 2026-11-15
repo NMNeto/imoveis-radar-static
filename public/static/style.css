@@ -1075,3 +1075,9 @@ textarea:focus { outline-color: rgba(13, 91, 215, .35); }
 .info-btn:focus-visible,
 .chip:focus-visible,
 .addr-link:focus-visible { outline-color: rgba(13, 91, 215, .45); }
+
+.help-actions {
+  margin-top: 22px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
