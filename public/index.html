@@ -4,17 +4,27 @@
   <script src="/static/gtm-loader.js"></script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Imovanta — busca de imóveis</title>
-  <meta name="description" content="Imovanta — radar de imóveis com desconto da Caixa, Banco do Brasil, Santander e Itaú. Filtre por estado, cidade, bairro, preço, desconto, lucro estimado e financiamento.">
+  <title>Imóveis de leilão: Caixa, BB, Santander e Itaú | Imovanta</title>
+  <meta name="description" content="Compare imóveis de leilão e retomados da Caixa, Banco do Brasil, Santander e Itaú. Filtre por cidade, desconto, lucro estimado e financiamento.">
+  <meta name="robots" content="index, follow, max-image-preview:large">
   <meta name="theme-color" content="#0b2f6f">
   <link rel="canonical" href="https://imovanta.com.br/">
-  <meta property="og:title" content="Imovanta — busca de imóveis">
-  <meta property="og:description" content="Radar de imóveis com desconto da Caixa, Banco do Brasil, Santander e Itaú.">
+  <meta property="og:site_name" content="Imovanta">
+  <meta property="og:locale" content="pt_BR">
   <meta property="og:type" content="website">
+  <meta property="og:title" content="Imóveis de leilão: Caixa, BB, Santander e Itaú | Imovanta">
+  <meta property="og:description" content="Compare imóveis de leilão e retomados dos quatro bancos. Filtre por cidade, desconto, lucro estimado e financiamento.">
   <meta property="og:url" content="https://imovanta.com.br/">
-  <meta property="og:image" content="https://imovanta.com.br/static/logo-imovanta.png">
-  <meta property="og:image:width" content="900">
-  <meta property="og:image:height" content="268">
+  <meta property="og:image" content="https://imovanta.com.br/static/og-image.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Imovanta — imóveis de leilão e retomados da Caixa, Banco do Brasil, Santander e Itaú">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Imóveis de leilão: Caixa, BB, Santander e Itaú | Imovanta">
+  <meta name="twitter:description" content="Compare imóveis de leilão e retomados dos quatro bancos. Filtre por cidade, desconto, lucro estimado e financiamento.">
+  <meta name="twitter:image" content="https://imovanta.com.br/static/og-image.png">
+  <meta name="twitter:image:alt" content="Imovanta — imóveis de leilão e retomados">
   <link rel="icon" type="image/png" href="static/favicon.png">
   <link rel="apple-touch-icon" href="static/apple-touch-icon.png">
   <link rel="manifest" href="static/site.webmanifest">
@@ -23,12 +33,56 @@
   <link rel="stylesheet" href="static/vendor/MarkerCluster.css">
   <link rel="stylesheet" href="static/vendor/MarkerCluster.Default.css">
   <link rel="stylesheet" href="static/style.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://imovanta.com.br/#website",
+        "url": "https://imovanta.com.br/",
+        "name": "Imovanta",
+        "alternateName": "Imovanta — imóveis de leilão e retomados",
+        "description": "Radar de imóveis de leilão e retomados da Caixa, Banco do Brasil, Santander e Itaú, com filtros por estado, cidade, desconto, lucro estimado e financiamento.",
+        "inLanguage": "pt-BR",
+        "publisher": { "@id": "https://imovanta.com.br/#organization" },
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": {
+            "@type": "EntryPoint",
+            "urlTemplate": "https://imovanta.com.br/?q={search_term_string}"
+          },
+          "query-input": "required name=search_term_string"
+        }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://imovanta.com.br/#organization",
+        "name": "Imovanta",
+        "url": "https://imovanta.com.br/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://imovanta.com.br/static/og-image.png",
+          "width": 1200,
+          "height": 630
+        },
+        "description": "Portal independente que reúne oportunidades de imóveis retomados e leilões dos bancos Caixa, Banco do Brasil, Santander e Itaú.",
+        "knowsAbout": [
+          "leilão de imóveis",
+          "imóveis retomados",
+          "venda direta de imóveis",
+          "financiamento imobiliário"
+        ]
+      }
+    ]
+  }
+  </script>
 </head>
 <body class="is-loading">
   <header class="topbar">
     <div class="brand">
       <div class="brand-head">
-        <h1 class="brand-logo"><img src="static/logo-imovanta.png" alt="Imovanta" width="900" height="268"></h1>
+        <h1 class="brand-logo"><img src="static/logo-imovanta.png" alt="Imovanta" width="900" height="268"><span class="sr-only">Imovanta — imóveis de leilão e retomados da Caixa, Banco do Brasil, Santander e Itaú</span></h1>
         <span id="data-meta" class="muted"></span>
         <span id="loading-status" class="loading-status" role="status" aria-live="polite"></span>
       </div>

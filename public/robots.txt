@@ -1,2 +1,14 @@
+# robots.txt do Imovanta — https://imovanta.com.br/
 User-agent: *
 Allow: /
+
+# O CSV é um download em massa, não uma página de conteúdo.
+Disallow: /data/busca_imoveis.csv
+
+# Estados voláteis da interface (ordenação e área do mapa).
+# Essas URLs têm canonical apontando para a página correspondente.
+Disallow: /*?*sort=
+Disallow: /*?*bbox=
+Disallow: /*?*exclusoes=
+
+Sitemap: https://imovanta.com.br/sitemap.xml

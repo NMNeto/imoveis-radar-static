@@ -10,6 +10,7 @@ from datetime import datetime
 from pathlib import Path
 
 from . import publish as publisher
+from . import sitemap as sitemap_generator
 from .collect import CollectionContext, collect_all
 from .config import (
     DEFAULT_CHUNK_SIZE,
@@ -516,6 +517,12 @@ def _run_locked(paths: Paths, options: RunOptions) -> int:
             force=options.force_publish,
         )
 
+        sitemap_result = None
+        if not options.dry_run and not result.validation_errors:
+            # O sitemap é derivado das páginas publicadas; roda mesmo quando os
+            # dados não mudaram, para o caso de o arquivo ter sido removido.
+            sitemap_result = sitemap_generator.generate(paths.public)
+
         history_changed = False
         if result.changed and not result.validation_errors:
             history = publisher.load_history(paths.history_file)
@@ -540,6 +547,7 @@ def _run_locked(paths: Paths, options: RunOptions) -> int:
             "mudou": result.changed,
             "arquivos": len(result.files_written),
             "blocos": len(result.chunks),
+            "sitemap": sitemap_result.as_dict() if sitemap_result else None,
             "fontes_resumo": ", ".join(
                 f"{source}: {status.get('status', '?')} ({status.get('rows', 0)})"
                 for source, status in source_status.items()
