@@ -27,15 +27,56 @@ validado por `tests/test_seo.py`.
 2. Enviar o mesmo `sitemap.xml`.
 3. IndexNow é opcional; o sitemap já cobre a descoberta diária.
 
-## 3. Host duplicado (`www`)
+## 3. Host duplicado (`www`) → 301 para o apex
 
-`https://www.imovanta.com.br/` responde **200** hoje. O canonical aponta para o
-apex, mas o correto é **301**:
+Estado em 18/11/2026: `www.imovanta.com.br` **não existe no DNS** (NXDOMAIN).
+Não é conteúdo duplicado hoje — é link quebrado para quem digita `www`. O
+canonical continua apontando para o apex, mas o correto é ter DNS **e** 301.
 
-- Cloudflare → **Rules → Redirect Rules → Create**.
-- Expressão: `http.host eq "www.imovanta.com.br"`.
-- Destino: `concat("https://imovanta.com.br", http.request.uri.path)`.
-- Status: **301**, preservar query string.
+### Passo 1 — criar o registro DNS
+
+Sem DNS não há requisição para redirecionar (a Redirect Rule nunca roda).
+
+1. Cloudflare → **DNS → Records → Add record**.
+2. Type **CNAME**, Name `www`, Target `imovanta.com.br`.
+3. Proxy **ativado** (nuvem laranja). Sem proxy a regra não é avaliada.
+4. Salvar. O Universal SSL já cobre `www` (curinga de um nível), então o HTTPS
+   funciona na hora.
+
+### Passo 2 — criar a Redirect Rule
+
+1. Cloudflare → **Rules → Redirect Rules → Create rule**.
+2. Nome: `www -> apex`.
+3. *When incoming requests match* → **Custom filter expression**:
+
+   ```
+   http.host eq "www.imovanta.com.br"
+   ```
+
+4. *Then* → **Dynamic redirect**:
+   - Expression: `concat("https://imovanta.com.br", http.request.uri.path)`
+   - Status code: **301**
+   - Marcar **Preserve query string**.
+5. **Deploy**.
+
+### Passo 3 — conferir
+
+`Always Use HTTPS` já está ativo (`http://imovanta.com.br/` responde 301 para
+https). Com a regra, `http://www.imovanta.com.br/imoveis/?x=1` passa por dois
+301 e termina em `https://imovanta.com.br/imoveis/?x=1`.
+
+```bash
+python scripts/verificar_redirect.py
+```
+
+O script confere DNS, código permanente, destino exato, preservação de caminho
+e de query string, a cadeia `http://www` e se alguma URL com `www` responde
+200. Sai com código 1 se algo estiver errado.
+
+> Não adicione `www` como *custom domain* do projeto no Pages: isso faria o
+> Pages servir o site em `www` (200) em vez de redirecionar. Se já estiver
+> adicionado, a Redirect Rule continua tendo prioridade — mas o ideal é manter
+> `www` só como CNAME + regra.
 
 ## 4. WAF e Googlebot
 
@@ -68,7 +109,8 @@ Enquanto isso, o `robots.txt` já pede para o rastreador **não** baixar o CSV
 | Imagem OG 1200×630 | `public/static/og-image.png` |
 | Cache/Content-Type de `sitemap.xml` e `robots.txt` | `public/_headers` |
 | Verificação automática pós-deploy | `scripts/verificar_seo.py` |
-| Testes de regressão | `tests/test_seo.py` |
+| Verificação do 301 `www` → apex | `scripts/verificar_redirect.py` |
+| Testes de regressão | `tests/test_seo.py`, `tests/test_redirect.py` |
 
 Comandos úteis:
 
@@ -76,14 +118,14 @@ Comandos úteis:
 python scripts/gerar_sitemap.py            # regenera public/sitemap.xml
 python scripts/verificar_seo.py            # audita produção
 python scripts/verificar_seo.py --url http://127.0.0.1:8080/
+python scripts/verificar_redirect.py       # audita o 301 de www
 python scripts/gerar_og_image.py           # regera a imagem OG (Pillow)
 ```
 
 ## 6. Limites atuais (conscientes)
 
-- O sitemap lista **apenas a home**, porque ainda não existem páginas em path.
-  Ele cresce automaticamente quando as landing pages (`/imoveis/{uf}/{cidade}/`)
-  forem geradas — basta o `index.html` existir e não ter `noindex`.
+- O sitemap lista as 188 URLs publicadas (home + páginas de SEO); ele cresce e
+  encolhe automaticamente junto com as páginas geradas.
 - `Disallow: /data/` **não** foi aplicado: sem pré-renderização o Google
   depende dos JSONs para renderizar o app. Aplicar só depois do item 9 do plano
   de SEO (landing pages pré-renderizadas).

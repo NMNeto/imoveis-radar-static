@@ -74,6 +74,7 @@ na sua máquina.
 │   ├── gerar_paginas.py        # gera as páginas /imoveis/...
 │   ├── gerar_sitemap.py        # gera public/sitemap.xml
 │   ├── verificar_seo.py        # auditoria rápida de SEO (local ou produção)
+│   ├── verificar_redirect.py   # confere o 301 de www para o apex
 │   ├── gerar_og_image.py       # regera a imagem de compartilhamento (Pillow)
 │   └── imoveis_radar/          # núcleo (coleta, modelo, geo, publicação)
 ├── data/
