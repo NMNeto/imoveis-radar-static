@@ -1,0 +1,3 @@
+# Cloudflare Pages remove o .html das URLs com um 308. O verificador do
+# Search Console precisa do arquivo exatamente no caminho informado, com 200.
+/googlef7f042644d84a682.html  /googlef7f042644d84a682  200

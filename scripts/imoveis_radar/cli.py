@@ -9,6 +9,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+from . import paginas as paginas_generator
 from . import publish as publisher
 from . import sitemap as sitemap_generator
 from .collect import CollectionContext, collect_all
@@ -517,10 +518,11 @@ def _run_locked(paths: Paths, options: RunOptions) -> int:
             force=options.force_publish,
         )
 
+        paginas_result = None
         sitemap_result = None
         if not options.dry_run and not result.validation_errors:
-            # O sitemap é derivado das páginas publicadas; roda mesmo quando os
-            # dados não mudaram, para o caso de o arquivo ter sido removido.
+            # Páginas primeiro: o sitemap é derivado do que existe em public/.
+            paginas_result = paginas_generator.generate(paths.public, items)
             sitemap_result = sitemap_generator.generate(paths.public)
 
         history_changed = False
@@ -548,6 +550,7 @@ def _run_locked(paths: Paths, options: RunOptions) -> int:
             "arquivos": len(result.files_written),
             "blocos": len(result.chunks),
             "sitemap": sitemap_result.as_dict() if sitemap_result else None,
+            "paginas_seo": paginas_result,
             "fontes_resumo": ", ".join(
                 f"{source}: {status.get('status', '?')} ({status.get('rows', 0)})"
                 for source, status in source_status.items()

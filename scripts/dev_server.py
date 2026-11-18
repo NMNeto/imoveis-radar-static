@@ -63,6 +63,36 @@ def load_header_rules(public_dir: Path):
     return rules
 
 
+def load_redirect_rules(public_dir: Path):
+    """Lê o _redirects do Pages (formato: origem destino [status])."""
+    path = public_dir / "_redirects"
+    if not path.exists():
+        return []
+    rules = []
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split()
+        if len(parts) < 2:
+            continue
+        status = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 302
+        rules.append((parts[0], parts[1], status))
+    return rules
+
+
+def match_redirect(rules, path: str):
+    for source, target, status in rules:
+        if source == path:
+            return target, status
+        if "*" in source and source.count("*") == 1:
+            prefix, suffix = source.split("*", 1)
+            if path.startswith(prefix) and path.endswith(suffix):
+                middle = path[len(prefix) : len(path) - len(suffix) if suffix else None]
+                return target.replace(":splat", middle), status
+    return None
+
+
 def _matches(pattern: str, path: str) -> bool:
     path = path.split("?", 1)[0]
     if pattern == "/*":
@@ -74,6 +104,7 @@ def _matches(pattern: str, path: str) -> bool:
 
 class Handler(SimpleHTTPRequestHandler):
     header_rules = []
+    redirect_rules = []
 
     def __init__(self, *args, directory: str | None = None, **kwargs):
         super().__init__(*args, directory=directory, **kwargs)
@@ -92,7 +123,30 @@ class Handler(SimpleHTTPRequestHandler):
         if parsed.path == "/api/image":
             self._serve_image(parse_qs(parsed.query))
             return
+        rule = match_redirect(self.redirect_rules, parsed.path)
+        if rule:
+            target, status = rule
+            if 300 <= status < 400:
+                self.send_response(status)
+                self.send_header("Location", target)
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
+            self.path = target + (f"?{parsed.query}" if parsed.query else "")
+        self._resolve_pretty_html()
         super().do_GET()
+
+    def _resolve_pretty_html(self):
+        """Reproduz o Pages: /foo serve foo.html."""
+        path = urlparse(self.path).path
+        if path.endswith("/") or "." in Path(path).name:
+            return
+        candidate = Path(self.directory) / path.lstrip("/")
+        if candidate.is_file():
+            return
+        html = candidate.with_name(candidate.name + ".html")
+        if html.is_file():
+            self.path = path + ".html"
 
     def _serve_image(self, query):
         values = query.get("url") or []
@@ -181,6 +235,7 @@ def main() -> int:
     parser.add_argument("--public", type=Path, default=PROJECT_ROOT / "public")
     args = parser.parse_args()
     Handler.header_rules = load_header_rules(args.public)
+    Handler.redirect_rules = load_redirect_rules(args.public)
     handler = lambda *a, **kw: Handler(*a, directory=str(args.public), **kw)  # noqa: E731
     server = ThreadingHTTPServer((args.host, args.port), handler)
     logger.info("Servindo %s em http://%s:%s", args.public, args.host, args.port)
