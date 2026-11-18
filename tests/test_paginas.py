@@ -192,3 +192,18 @@ def test_committed_pages_exist_for_every_sitemap_url():
         if not path or url.endswith("/"):
             target = PUBLIC / path / "index.html"
         assert target.exists(), url
+
+
+def test_internal_links_point_to_existing_pages(tmp_path):
+    public = tmp_path / "public"
+    public.mkdir()
+    (public / "index.html").write_text("<html></html>", encoding="utf-8")
+    paginas.generate(public, _items())
+    broken = []
+    for path in public.rglob("imoveis/**/index.html"):
+        html = path.read_text(encoding="utf-8")
+        for href in re.findall(r'href="(/imoveis/[^"#?]*)"', html):
+            target = public / href.strip("/")
+            if not (target / "index.html").exists():
+                broken.append((str(path.relative_to(public)), href))
+    assert not broken, broken
