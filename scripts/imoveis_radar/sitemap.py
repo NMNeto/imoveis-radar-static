@@ -26,6 +26,7 @@ SITEMAP_FILE = "sitemap.xml"
 MAX_URLS_PER_FILE = 45_000
 SKIP_DIRS = {"static", "data", ".well-known"}
 SKIP_FILES = {"404.html"}
+GOOGLE_VERIFICATION_RE = re.compile(r"^google[0-9a-f]+\.html$", re.IGNORECASE)
 NOINDEX_RE = re.compile(
     r"<meta[^>]+name\s*=\s*[\"']robots[\"'][^>]*\bnoindex\b", re.IGNORECASE
 )
@@ -73,6 +74,8 @@ def collect_urls(public: Path) -> list[str]:
         if any(part in SKIP_DIRS for part in relative.parts[:-1]):
             continue
         if relative.name in SKIP_FILES:
+            continue
+        if GOOGLE_VERIFICATION_RE.match(relative.name):
             continue
         if not is_indexable(path):
             continue

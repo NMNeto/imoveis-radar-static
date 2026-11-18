@@ -209,3 +209,43 @@ def test_seo_checks_catch_regressions():
     assert "Canonical absoluto e autorreferente" in failed
     assert "JSON-LD válido com WebSite e Organization" in failed
     assert any(name.startswith("Description") for name in failed)
+
+
+def test_google_verification_file_is_published_verbatim():
+    files = sorted(PUBLIC.glob("google*.html"))
+    assert files, "arquivo de verificação do Google ausente"
+    for path in files:
+        content = path.read_text(encoding="utf-8").strip()
+        token = path.stem  # google + hash
+        assert content == f"google-site-verification: {token}.html"
+        assert re.fullmatch(r"google[0-9a-f]{8,}", token), token
+
+
+def test_google_verification_is_not_in_sitemap(tmp_path):
+    public = _make_site(tmp_path / "public")
+    verification = public / "googlef7f042644d84a682.html"
+    verification.write_text(
+        "google-site-verification: googlef7f042644d84a682.html", encoding="utf-8"
+    )
+    assert "/googlef7f042644d84a682.html" not in sitemap.collect_urls(public)
+
+
+def test_csp_allows_cloudflare_insights_beacon():
+    text = (PUBLIC / "_headers").read_text(encoding="utf-8")
+    csp = next(
+        line.split(":", 1)[1].strip()
+        for line in text.splitlines()
+        if line.strip().startswith("Content-Security-Policy:")
+    )
+    script_src = next(part for part in csp.split(";") if part.strip().startswith("script-src"))
+    connect_src = next(part for part in csp.split(";") if part.strip().startswith("connect-src"))
+    assert "https://static.cloudflareinsights.com" in script_src
+    assert "https://cloudflareinsights.com" in connect_src
+    assert "unsafe-eval" not in csp
+    assert "unsafe-inline" not in script_src
+
+
+def test_verification_file_has_short_cache_rule():
+    text = (PUBLIC / "_headers").read_text(encoding="utf-8")
+    assert "/google*.html" in text
+    assert "max-age=300" in text.split("/google*.html", 1)[1]
