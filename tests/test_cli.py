@@ -95,3 +95,6 @@ def test_cli_generates_sitemap_from_published_pages(paths):
     sitemap = (paths.public / "sitemap.xml").read_text(encoding="utf-8")
     assert "<loc>https://imovanta.com.br/</loc>" in sitemap
     assert "404" not in sitemap
+    # páginas estáticas de SEO também são geradas no pipeline
+    assert (paths.public / "imoveis" / "index.html").exists()
+    assert "<loc>https://imovanta.com.br/imoveis/</loc>" in sitemap

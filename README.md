@@ -57,9 +57,12 @@ na sua máquina.
 .
 ├── public/                     # artefato publicado no Pages
 │   ├── index.html
-│   ├── static/                 # CSS, JS, Leaflet, placeholder
+│   ├── static/                 # CSS, JS, theme, Leaflet, placeholder
 │   ├── data/                   # JSON/CSV gerados (versionados)
+│   ├── imoveis/                # páginas de SEO geradas (estado/cidade/banco)
+│   ├── sitemap.xml             # gerado a partir das páginas publicadas
 │   ├── _headers
+│   ├── _redirects
 │   ├── _routes.json
 │   └── robots.txt
 ├── functions/api/image.js      # Pages Function: proxy de imagens
@@ -68,6 +71,10 @@ na sua máquina.
 │   ├── importar_config.py      # aplica config-local.json ao repositório
 │   ├── normalizar_enderecos.py # normaliza endereços e gera fila de geocodificação
 │   ├── dev_server.py           # pré-visualização local com /api/image
+│   ├── gerar_paginas.py        # gera as páginas /imoveis/...
+│   ├── gerar_sitemap.py        # gera public/sitemap.xml
+│   ├── verificar_seo.py        # auditoria rápida de SEO (local ou produção)
+│   ├── gerar_og_image.py       # regera a imagem de compartilhamento (Pillow)
 │   └── imoveis_radar/          # núcleo (coleta, modelo, geo, publicação)
 ├── data/
 │   ├── raw/                    # CSVs das fontes (Caixa/BB/Santander/Itaú)
@@ -106,6 +113,18 @@ python scripts/atualizar_imoveis.py --skip-collect --no-geocode
 # 2) Pré-visualiza o site em http://127.0.0.1:8080
 python scripts/dev_server.py --port 8080
 ```
+
+O pipeline também gera as páginas de SEO e o sitemap. Para rodar só essa parte:
+
+```bash
+python scripts/gerar_paginas.py   # /imoveis/, /imoveis/{uf}/{cidade}/, /imoveis/banco/{fonte}/
+python scripts/gerar_sitemap.py   # public/sitemap.xml
+python scripts/verificar_seo.py --url http://127.0.0.1:8080/
+```
+
+O tema claro/escuro é resolvido por `public/static/theme.js` (localStorage +
+`prefers-color-scheme`) e pelo bloco `html[data-theme="dark"]` em `style.css`.
+Qualquer elemento com `data-theme-toggle` funciona como botão de alternância.
 
 O `dev_server.py` serve `public/` e implementa o mesmo `/api/image` da Pages
 Function, para que as imagens de BB/Santander/Itaú apareçam no preview.

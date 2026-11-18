@@ -22,6 +22,8 @@ def test_help_markup_and_content():
         "Clique no endereço do cartão",
         "Configurações",
         "Mapa e localização",
+        "Download do CSV",
+        "Tentar novamente",
     ):
         assert marker in html, marker
 
@@ -32,3 +34,11 @@ def test_help_is_wired_in_app():
     assert '#btn-help' in app
     assert '#btn-help-close' in app
     assert '#btn-notice-help' in app
+
+
+def test_csv_link_does_not_force_download():
+    """O atributo download impedia o desafio da Cloudflare de aparecer."""
+    html = (ROOT / "public" / "index.html").read_text(encoding="utf-8")
+    marker = 'id="btn-download"'
+    tag = html[html.index(marker) - 40 : html.index(marker) + 200]
+    assert "download" not in tag.split(">")[0]

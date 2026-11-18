@@ -89,3 +89,27 @@ python scripts/gerar_og_image.py           # regera a imagem OG (Pillow)
   de SEO (landing pages pré-renderizadas).
 - Páginas de filtro continuam com canonical para `/`; elas não são indexáveis
   por design até virarem paths próprios.
+
+## 7. Páginas de SEO por estado, cidade e banco
+
+- Geradas por `scripts/imoveis_radar/paginas.py` no fim de cada atualização
+  (e manualmente por `python scripts/gerar_paginas.py`).
+- URLs: `/imoveis/`, `/imoveis/{uf}/`, `/imoveis/{uf}/{cidade}/`,
+  `/imoveis/banco/{fonte}/`. Cidade entra com **≥ 10 imóveis** na visão padrão.
+- Cada página tem HTML completo (sem JS), H1 textual, números próprios
+  (total, desconto médio, preço mediano, % financiável), 12 cards
+  pré-renderizados, canonical autorreferente, `BreadcrumbList` +
+  `CollectionPage`, e links internos para as páginas vizinhas.
+- Páginas que deixam de ter o mínimo são removidas automaticamente.
+- O sitemap passa a listar essas páginas (hoje 188 URLs).
+
+## 8. Desempenho (LCP)
+
+- A home agora traz 24 cards pré-renderizados no HTML e os scripts usam
+  `defer`; a primeira pintura de conteúdo não depende dos ~3 MB de JSON.
+- A imagem do primeiro card com URL direta recebe `preload` +
+  `fetchpriority="high"`, para não ficar atrás das imagens do proxy.
+- Páginas de cidade medem LCP ~1 s em 4G lento com CPU 4×; a home ainda é
+  limitada pelas imagens (o proxy `/api/image` busca a origem na primeira vez).
+- Próximo passo para a home: dividir os JSONs por UF e carregar só a fatia
+  necessária.
