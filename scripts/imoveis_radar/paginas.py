@@ -399,7 +399,11 @@ def build_specs(items: list[dict], *, min_city_items: int = MIN_CITY_ITEMS) -> l
     # Estados
     for uf, group in sorted(by_uf.items()):
         name = UF_NAMES.get(uf, uf)
-        cities = [(key, len(value)) for key, value in by_city.items() if key[0] == uf]
+        cities = [
+            (key, len(value))
+            for key, value in by_city.items()
+            if key[0] == uf and len(value) >= min_city_items
+        ]
         cities.sort(key=lambda pair: -pair[1])
         stats = _stats(group)
         specs.append(
@@ -479,7 +483,7 @@ def build_specs(items: list[dict], *, min_city_items: int = MIN_CITY_ITEMS) -> l
                 (key, len([i for i in value if i.get("fonte") == fonte]))
                 for key, value in by_city.items()
             )
-            if count >= 5
+            if count >= min_city_items
         ]
         top_cities.sort(key=lambda pair: -pair[1])
         specs.append(
