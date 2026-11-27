@@ -22,6 +22,8 @@ from pathlib import Path
 
 PAGINA = "https://venda-imoveis.caixa.gov.br/sistema/download-lista.asp"
 SAIDA_DIR = Path(os.environ.get("SOURCE_OUTPUT_DIR", "reports"))
+#: Perfil persistente do Chromium (cookies/confiança do Radware entre execuções).
+PERFIL = Path(os.environ.get("CAIXA_PROFILE_DIR", Path.home() / ".cache" / "imovanta-chrome"))
 SAIDA = SAIDA_DIR / "Lista_imoveis_geral.csv"
 TENTATIVAS = int(os.environ.get("CAIXA_TENTATIVAS", "2"))
 TEMPO_DOWNLOAD_MS = int(os.environ.get("CAIXA_DOWNLOAD_TIMEOUT_MS", "120000"))
@@ -67,11 +69,13 @@ def _selecionar_todos(page) -> str | None:
 
 
 def _clicar_proxima(page) -> bool:
+    # A Caixa usa "Próximo" (botão #btn_next1) na tela de lista completa.
     candidatos = [
-        page.get_by_role("button", name=re.compile(r"pr[óo]xima", re.I)),
-        page.get_by_role("link", name=re.compile(r"pr[óo]xima", re.I)),
-        page.locator("input[type=submit][value*='róxima' i]"),
-        page.locator("input[type=button][value*='róxima' i]"),
+        page.locator("#btn_next1"),
+        page.get_by_role("button", name=re.compile(r"pr[óo]xim[oa]", re.I)),
+        page.get_by_role("link", name=re.compile(r"pr[óo]xim[oa]", re.I)),
+        page.locator("input[type=submit][value*='róxim' i]"),
+        page.locator("input[type=button][value*='róxim' i]"),
     ]
     for candidato in candidatos:
         try:
@@ -136,17 +140,26 @@ def baixar_uma_vez() -> Path:
     from playwright.sync_api import TimeoutError as PlaywrightTimeout
     from playwright.sync_api import sync_playwright
 
+    # Headful (com Xvfb) + perfil persistente: é o que passa pelo Radware.
+    # O headless recebe "Radware Bot Manager CAPTCHA" na hora.
+    PERFIL.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=True,
-            args=["--disable-blink-features=AutomationControlled"],
-        )
-        contexto = browser.new_context(
-            locale="pt-BR",
-            user_agent=USER_AGENT,
-            viewport={"width": 1366, "height": 900},
-        )
-        page = contexto.new_page()
+        try:
+            contexto = p.chromium.launch_persistent_context(
+                str(PERFIL),
+                headless=False,
+                locale="pt-BR",
+                user_agent=USER_AGENT,
+                viewport={"width": 1366, "height": 900},
+                accept_downloads=True,
+                args=["--disable-blink-features=AutomationControlled"],
+            )
+        except Exception as erro:  # noqa: BLE001
+            raise RuntimeError(
+                "não foi possível abrir o Chromium headful; rode via xvfb-run "
+                f"ou instale o xvfb ({erro})"
+            ) from erro
+        page = contexto.pages[0] if contexto.pages else contexto.new_page()
         respostas_csv: list[bytes] = []
 
         def guardar_resposta(response):
@@ -206,7 +219,6 @@ def baixar_uma_vez() -> Path:
             raise RuntimeError("não foi possível obter o CSV pela tela de download")
         finally:
             contexto.close()
-            browser.close()
 
 
 def main() -> int:
