@@ -1,0 +1,19 @@
+[Unit]
+Description=Imovanta — coleta local da lista da Caixa
+Documentation=file:///home/pi/imoveis-radar-static/docs/coleta-local.md
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/imoveis-radar-static
+EnvironmentFile=-/home/pi/.config/imovanta/caixa.env
+ExecStart=/home/pi/imoveis-radar-static/scripts/coletar_local.sh
+TimeoutStartSec=30min
+Nice=10
+IOSchedulingClass=idle
+# Log no journal: journalctl -u imovanta-caixa.service -n 100
+StandardOutput=journal
+StandardError=journal

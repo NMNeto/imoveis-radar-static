@@ -1,0 +1,13 @@
+[Unit]
+Description=Imovanta — coleta diária da Caixa (05:30 America/Sao_Paulo)
+
+[Timer]
+# O pipeline do GitHub Actions roda às 09:00 UTC (06:00 BRT); três horas de
+# folga evitam disputa de push.
+OnCalendar=*-*-* 05:30:00
+RandomizedDelaySec=10min
+Persistent=true
+Unit=imovanta-caixa.service
+
+[Install]
+WantedBy=timers.target

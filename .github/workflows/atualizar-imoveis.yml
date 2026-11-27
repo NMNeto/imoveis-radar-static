@@ -111,3 +111,19 @@ jobs:
             exit 0
           fi
           curl --fail --silent --show-error -X POST "$DEPLOY_HOOK"
+
+      - name: Verificar fontes com falha
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.dry_run != true }}
+        run: python scripts/checar_fontes.py --max-stale-days 3
+
+      - name: Enviar e-mail de alerta
+        if: failure()
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_SECURITY: ${{ secrets.SMTP_SECURITY }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          ALERT_EMAIL_FROM: ${{ secrets.ALERT_EMAIL_FROM }}
+          ALERT_EMAIL_TO: ${{ secrets.ALERT_EMAIL_TO }}
+        run: python scripts/enviar_alerta_email.py
