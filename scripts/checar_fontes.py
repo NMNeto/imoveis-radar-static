@@ -26,8 +26,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from imoveis_radar.collect import stale_days  # noqa: E402
 from imoveis_radar.config import PROJECT_ROOT  # noqa: E402
+from imoveis_radar.csv_sources import stale_days  # noqa: E402
 
 SUMMARY_PATH = PROJECT_ROOT / "public" / "data" / "ultima_atualizacao.json"
 

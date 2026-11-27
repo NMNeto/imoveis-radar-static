@@ -105,9 +105,32 @@ def send(
         client.send_message(message)
 
 
+def build_test_message(prefix: str = "[Imovanta]") -> tuple[str, str]:
+    """Mensagem fixa para validar os secrets, sem depender do resumo."""
+    assunto = f"{prefix} Teste de alerta por e-mail"
+    corpo = "\n".join(
+        [
+            "Este é um teste do alerta automático do Imovanta.",
+            "",
+            "Se você recebeu esta mensagem, os secrets SMTP_* estão corretos e o",
+            "pipeline consegue avisar quando uma fonte ficar sem dados.",
+            "",
+            "Nenhum dado foi alterado.",
+            "",
+            "— Imovanta (alerta automático)",
+        ]
+    )
+    return assunto, corpo
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--summary", type=Path, default=SUMMARY_PATH)
+    parser.add_argument(
+        "--test",
+        action="store_true",
+        help="envia uma mensagem de teste (valida os secrets)",
+    )
     parser.add_argument("--max-age-hours", type=float, default=0)
     parser.add_argument("--max-stale-days", type=int, default=3)
     parser.add_argument("--dry-run", action="store_true", help="imprime sem enviar")
@@ -124,30 +147,34 @@ def main(argv: list[str] | None = None) -> int:
         if endereco.strip()
     ]
     if not host or not recipients:
-        if not args.dry_run:
-            print(
-                "SMTP_HOST/ALERT_EMAIL_TO não configurados; alerta não enviado.",
-                file=sys.stderr,
-            )
-            return 0
+        print(
+            "SMTP_HOST/ALERT_EMAIL_TO não configurados."
+            + ("" if args.test else " Alerta não enviado."),
+            file=sys.stderr,
+        )
+        return 2 if args.test else 0
 
-    try:
-        summary = json.loads(args.summary.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        summary = {}
+    prefixo = os.environ.get("ALERT_SUBJECT_PREFIX", "[Imovanta]")
+    if args.test:
+        assunto, corpo = build_test_message(prefixo)
+    else:
+        try:
+            summary = json.loads(args.summary.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            summary = {}
 
-    problemas = check_summary(
-        summary,
-        max_age_hours=args.max_age_hours,
-        max_stale_days=args.max_stale_days,
-    )
-    assunto, corpo = build_message(
-        summary,
-        problemas,
-        link=run_url(),
-        prefix=os.environ.get("ALERT_SUBJECT_PREFIX", "[Imovanta]"),
-        max_stale_days=args.max_stale_days,
-    )
+        problemas = check_summary(
+            summary,
+            max_age_hours=args.max_age_hours,
+            max_stale_days=args.max_stale_days,
+        )
+        assunto, corpo = build_message(
+            summary,
+            problemas,
+            link=run_url(),
+            prefix=prefixo,
+            max_stale_days=args.max_stale_days,
+        )
 
     if args.dry_run:
         print(f"Assunto: {assunto}\n\n{corpo}")
@@ -168,7 +195,7 @@ def main(argv: list[str] | None = None) -> int:
         )
     except Exception as exc:  # noqa: BLE001 - alerta nunca esconde a falha real
         print(f"Falha ao enviar o e-mail de alerta: {exc}", file=sys.stderr)
-        return 0
+        return 1 if args.test else 0
     print(f"Alerta enviado para {', '.join(recipients)}.")
     return 0
 

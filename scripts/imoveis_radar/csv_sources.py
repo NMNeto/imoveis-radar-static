@@ -11,7 +11,7 @@ import csv
 import glob
 import os
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 from .config import SOURCE_FILES, SOURCE_NAMES, SOURCE_ORDER
@@ -91,6 +91,17 @@ def read_generation_date(path: Path) -> str | None:
         return datetime.strptime(match.group(1), "%d/%m/%Y").date().isoformat()
     except ValueError:
         return None
+
+
+def stale_days(generation_date: str | None, today: date | None = None) -> int | None:
+    """Dias entre a data de geração do CSV e hoje. ``None`` se desconhecida."""
+    if not generation_date:
+        return None
+    try:
+        generated = date.fromisoformat(str(generation_date)[:10])
+    except ValueError:
+        return None
+    return max(0, ((today or date.today()) - generated).days)
 
 
 def count_csv_rows(path: Path) -> int:

@@ -30,7 +30,9 @@ def test_stale_days_conta_dias_desde_a_geracao():
 
 
 def test_stale_details_marca_atraso_acima_do_limite(monkeypatch):
-    monkeypatch.setattr(collect, "date", _FixedDate)
+    from imoveis_radar import csv_sources
+
+    monkeypatch.setattr(csv_sources, "date", _FixedDate)
     assert collect.stale_details("2026-11-26", 3) == {"stale_days": 1}
     detalhes = collect.stale_details("2026-11-19", 3)
     assert detalhes["desatualizado"] is True
@@ -155,3 +157,13 @@ def test_run_collector_desiste_apos_o_limite(monkeypatch):
     )
     assert not status.ok
     assert len(tentativas) == 3
+
+
+def test_mensagem_de_teste_explica_o_objetivo():
+    from enviar_alerta_email import build_test_message
+
+    assunto, corpo = build_test_message("[Imovanta]")
+    assert assunto.startswith("[Imovanta]")
+    assert "Teste de alerta" in assunto
+    assert "secrets SMTP" in corpo
+    assert "Nenhum dado foi alterado" in corpo
