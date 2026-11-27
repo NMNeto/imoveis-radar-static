@@ -18,7 +18,7 @@ import sys
 import tempfile
 import time
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import datetime
 from pathlib import Path
 
 import requests
@@ -36,6 +36,7 @@ from .csv_sources import (
     SourceFile,
     read_generation_date,
     read_source_rows,
+    stale_days,
     validate_source_csv,
 )
 from .safety import atomic_write_json, ensure_within
@@ -114,17 +115,6 @@ class CollectionContext:
 
 def _now() -> str:
     return datetime.now().isoformat(timespec="seconds")
-
-
-def stale_days(generation_date: str | None, today: date | None = None) -> int | None:
-    """Dias entre a data de geração do CSV e hoje. ``None`` se desconhecida."""
-    if not generation_date:
-        return None
-    try:
-        generated = date.fromisoformat(str(generation_date)[:10])
-    except ValueError:
-        return None
-    return max(0, ((today or date.today()) - generated).days)
 
 
 def stale_details(generation_date: str | None, max_stale_days: int) -> dict:

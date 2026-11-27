@@ -187,6 +187,74 @@ python scripts/checar_fontes.py
 python scripts/enviar_alerta_email.py --dry-run
 ```
 
+### Onde cadastrar
+
+GitHub → **Settings → Secrets and variables → Actions → New repository secret**.
+Os nomes precisam ser **exatamente** os da tabela (maiúsculas e underscore).
+
+### Gmail (conta secundária)
+
+1. Ative a **verificação em duas etapas** na conta.
+2. `myaccount.google.com` → **Segurança** → **Senhas de app** → criar
+   "Imovanta" → copie os **16 caracteres** (sem espaços).
+3. Cadastre:
+
+| Secret | Valor |
+| --- | --- |
+| `SMTP_HOST` | `smtp.gmail.com` |
+| `SMTP_PORT` | `587` |
+| `SMTP_SECURITY` | `starttls` |
+| `SMTP_USER` | a conta secundária (`algo@gmail.com`) |
+| `SMTP_PASS` | a senha de app de 16 caracteres |
+| `ALERT_EMAIL_FROM` | a mesma conta secundária |
+| `ALERT_EMAIL_TO` | para onde o alerta deve ir (pode ser outra conta) |
+
+> O Gmail exige que o `From` seja a conta autenticada. Limite de ~500
+> destinatários/dia; o alerta manda 1 e-mail por execução com problema.
+
+### Outros provedores
+
+| Provedor | Host | Porta | Segurança | Senha |
+| --- | --- | --- | --- | --- |
+| Outlook/Hotmail | `smtp-mail.outlook.com` | `587` | `starttls` | senha de app (se 2FA) |
+| Yahoo | `smtp.mail.yahoo.com` | `587` | `starttls` | senha de app |
+| Zoho | `smtp.zoho.com` | `587` | `starttls` | senha de app |
+| Brevo (300/dia grátis) | `smtp-relay.brevo.com` | `587` | `starttls` | SMTP key do painel |
+
+No Brevo o `ALERT_EMAIL_FROM` precisa ser um remetente verificado. Contas
+corporativas da Microsoft podem exigir OAuth e recusar SMTP simples — nesse
+caso use Gmail ou Brevo.
+
+### Cadastro pelo terminal (opcional)
+
+```bash
+gh secret set SMTP_HOST --body "smtp.gmail.com"
+gh secret set SMTP_PORT --body "587"
+gh secret set SMTP_SECURITY --body "starttls"
+gh secret set SMTP_USER --body "conta@gmail.com"
+gh secret set SMTP_PASS          # pede o valor sem mostrar na tela
+gh secret set ALERT_EMAIL_FROM --body "conta@gmail.com"
+gh secret set ALERT_EMAIL_TO --body "voce@exemplo.com"
+gh secret list
+```
+
+`SMTP_PASS` é pedido no terminal (não fica no histórico). Nunca coloque a
+senha em arquivo do repositório.
+
+### Testar
+
+1. Actions → **Testar alerta por e-mail** → **Run workflow**.
+2. O log deve terminar com `Alerta enviado para ...`.
+
+Localmente, sem o Actions:
+
+```bash
+SMTP_HOST=smtp.gmail.com SMTP_PORT=587 SMTP_SECURITY=starttls \
+SMTP_USER=conta@gmail.com SMTP_PASS='senha de app' \
+ALERT_EMAIL_TO=voce@exemplo.com \
+python scripts/enviar_alerta_email.py --test
+```
+
 ## 6. Custo e limites
 
 - GitHub Actions: repositório público usa runners gratuitos; repositório
