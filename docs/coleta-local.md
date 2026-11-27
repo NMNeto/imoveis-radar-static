@@ -18,6 +18,8 @@ sem enviar, o `checar_fontes.py` marca `dados desatualizados` e o alerta dispara
 - Raspberry Pi OS 64-bit (Playwright não tem build para 32-bit).
 - ~2 GB livres (Chromium + dependências ≈ 500 MB).
 - Python 3.11+ e git.
+- `xvfb` — o Radware barra Chromium **headless**; o coletor roda headful num
+  display virtual (`sudo apt-get install -y xvfb`).
 - Acesso de escrita ao repositório (deploy key ou token).
 
 ## 2. Instalação
@@ -29,6 +31,7 @@ cd imoveis-radar-static
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 .venv/bin/playwright install --with-deps chromium
+sudo apt-get install -y xvfb
 ```
 
 > `--with-deps` instala as bibliotecas de sistema via `apt` e pede `sudo`.
@@ -74,8 +77,15 @@ scripts/coletar_local.sh --dry-run                # baixa, mostra a data, não c
 ```
 
 Se o `head` mostrar a data de hoje, o IP da sua rede passou pelo Radware.
-Se aparecer página de CAPTCHA, o caminho é o download manual no navegador
-(*Todos* → *Próxima*) e commit do arquivo.
+O script detecta que não há `DISPLAY` e se reexecuta sob `xvfb-run`.
+
+O coletor abre a tela **Lista completa de imóveis**, escolhe `Todos` em
+`#cmb_estado` e clica em **Próximo** (`#btn_next1`). A sessão fica num perfil
+persistente (`~/.cache/imovanta-chrome`), o que reduz o desafio do Radware
+entre execuções.
+
+Se ainda assim aparecer CAPTCHA, o caminho é o download manual no navegador
+(*Todos* → *Próximo*) e commit do arquivo.
 
 ## 5. Agendamento (systemd)
 
@@ -105,7 +115,8 @@ falha — no Uptime Kuma, crie um monitor **Push** com intervalo de 24 h e
 
 | Sintoma | Causa provável | Ação |
 | --- | --- | --- |
-| `Radware Bot Manager bloqueou o acesso (CAPTCHA)` | IP marcado ou rede corporativa | testar em outra rede; reduzir frequência |
+| `Radware Bot Manager bloqueou o acesso (CAPTCHA)` | IP marcado ou execução headless | confirmar `xvfb-run`; testar em outra rede; reduzir frequência |
+| `não foi possível abrir o Chromium headful` | execução sem `DISPLAY`/`xvfb` | `sudo apt-get install -y xvfb` |
 | `download não gerou …` | botão/rótulo mudou na Caixa | abrir a página no navegador e conferir os textos |
 | `playwright: Executable doesn't exist` | Chromium não instalado | `.venv/bin/playwright install --with-deps chromium` |
 | `Permission denied (publickey)` no push | deploy key sem escrita | marcar *Allow write access* |

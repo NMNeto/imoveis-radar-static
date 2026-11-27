@@ -34,6 +34,13 @@ done
 
 log() { printf '%s %s\n' "$(date '+%F %T')" "$*"; }
 
+# O Radware da Caixa barra Chromium headless; o coletor precisa de um display.
+# Sem DISPLAY, reexecuta sob Xvfb automaticamente (funciona no systemd e no SSH).
+if [[ -z "${DISPLAY:-}" && -z "${IMOVANTA_XVFB:-}" ]] && command -v xvfb-run >/dev/null 2>&1; then
+    export IMOVANTA_XVFB=1
+    exec xvfb-run -a "$0" "$@"
+fi
+
 pings() {
     local status="$1" msg="$2"
     [[ -n "${KUMA_PUSH_URL:-}" ]] || return 0
