@@ -99,7 +99,21 @@ jobs:
             exit 0
           fi
           git commit -m "dados: atualização automática $(date -u '+%Y-%m-%d %H:%M UTC')"
-          git push
+
+          # O main pode andar durante a execução (merge de PR, coleta do Pi).
+          # Sem isso o push falha e o run inteiro é perdido.
+          for tentativa in 1 2 3; do
+            if git push; then
+              exit 0
+            fi
+            echo "push rejeitado; sincronizando com o main e tentando de novo ($tentativa/3)…"
+            if ! git pull --rebase --no-edit origin main; then
+              git rebase --abort || true
+              exit 1
+            fi
+          done
+          echo "não foi possível enviar o commit após 3 tentativas"
+          exit 1
 
       - name: Disparar deploy hook da Cloudflare (opcional)
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.dry_run != true }}
