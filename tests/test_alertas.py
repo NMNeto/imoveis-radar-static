@@ -167,3 +167,33 @@ def test_mensagem_de_teste_explica_o_objetivo():
     assert "Teste de alerta" in assunto
     assert "secrets SMTP" in corpo
     assert "Nenhum dado foi alterado" in corpo
+
+
+def test_falha_do_actions_e_ignorada_quando_o_pi_commitou_recente():
+    resumo = _summary(bb={"status": "falhou", "last_error": "x"})
+    problemas = check_summary(
+        resumo,
+        now=NOW,
+        fresh_source=lambda fonte: 6.0,
+        fresh_hours=30,
+    )
+    assert problemas == []
+
+
+def test_falha_continua_alertando_quando_o_csv_do_pi_esta_velho():
+    resumo = _summary(bb={"status": "falhou", "last_error": "x"})
+    problemas = check_summary(
+        resumo,
+        now=NOW,
+        fresh_source=lambda fonte: 48.0,
+        fresh_hours=30,
+    )
+    assert [p.fonte for p in problemas] == ["bb"]
+
+
+def test_sem_commit_conhecido_a_falha_aparece():
+    resumo = _summary(bb={"status": "falhou", "last_error": "x"})
+    problemas = check_summary(
+        resumo, now=NOW, fresh_source=lambda fonte: None, fresh_hours=30
+    )
+    assert [p.fonte for p in problemas] == ["bb"]

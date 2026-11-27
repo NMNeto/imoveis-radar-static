@@ -19,14 +19,17 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
+import time
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import Callable
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from imoveis_radar.config import PROJECT_ROOT  # noqa: E402
+from imoveis_radar.config import PROJECT_ROOT, SOURCE_FILES  # noqa: E402
 from imoveis_radar.csv_sources import stale_days  # noqa: E402
 
 SUMMARY_PATH = PROJECT_ROOT / "public" / "data" / "ultima_atualizacao.json"
@@ -37,6 +40,29 @@ class Problema:
     fonte: str
     motivo: str
     detalhe: str = ""
+
+
+def horas_desde_commit(source_id: str, root: Path = PROJECT_ROOT) -> float | None:
+    """Horas desde o último commit do CSV da fonte (coleta local do Pi).
+
+    Devolve ``None`` quando o arquivo nunca foi commitado ou o git não está
+    disponível (por exemplo, rodando fora do repositório).
+    """
+    caminho = Path("data") / "raw" / source_id / SOURCE_FILES.get(source_id, "")
+    try:
+        resultado = subprocess.run(
+            ["git", "log", "-1", "--format=%ct", "--", str(caminho)],
+            cwd=str(root),
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        carimbo = int((resultado.stdout or "").strip() or 0)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return None
+    if not carimbo:
+        return None
+    return max(0.0, (time.time() - carimbo) / 3600)
 
 
 def parse_datetime(value) -> datetime | None:
@@ -57,6 +83,8 @@ def check_summary(
     max_age_hours: float = 0,
     max_stale_days: int = 3,
     ignore: tuple[str, ...] = (),
+    fresh_source: Callable[[str], float | None] | None = None,
+    fresh_hours: float = 30,
 ) -> list[Problema]:
     """Devolve a lista de problemas encontrados no resumo da execução."""
     now = now or datetime.now()
@@ -85,6 +113,12 @@ def check_summary(
             continue
         status = (fonte or {}).get("status")
         if status in ("falhou", "erro"):
+            # O Actions pode falhar e o Pi ter enviado o CSV horas antes:
+            # nesse caso os dados estão frescos e não há o que alarmar.
+            if fresh_source and fresh_hours > 0:
+                horas = fresh_source(source_id)
+                if horas is not None and horas <= fresh_hours:
+                    continue
             problemas.append(
                 Problema(
                     source_id,
@@ -150,6 +184,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="dias máximos de atraso aceitos no CSV de uma fonte (padrão: 3)",
     )
     parser.add_argument(
+        "--fresh-hours",
+        type=float,
+        default=30,
+        help="horas em que um CSV commitado pelo Pi conta como fresco (0 = desliga)",
+    )
+    parser.add_argument(
         "--ignore",
         action="append",
         default=[],
@@ -172,6 +212,8 @@ def main(argv: list[str] | None = None) -> int:
         max_age_hours=args.max_age_hours,
         max_stale_days=args.max_stale_days,
         ignore=tuple(args.ignore),
+        fresh_source=horas_desde_commit if args.fresh_hours > 0 else None,
+        fresh_hours=args.fresh_hours,
     )
     if args.json:
         print(

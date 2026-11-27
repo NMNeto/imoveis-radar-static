@@ -5,13 +5,25 @@ residenciais e bloqueia os runners do GitHub. A solução é dividir o trabalho:
 
 | Onde | O que faz |
 | --- | --- |
-| **Raspberry Pi** (IP residencial) | baixa `Lista_imoveis_geral.csv` e commita em `data/raw/caixa/` |
-| **GitHub Actions** | valida, geocodifica, publica, gera páginas SEO/sitemap e commita `public/` |
+| **Raspberry Pi** (IP residencial) | baixa a **Caixa** (`Lista_imoveis_geral.csv`) e o **BB** (`imoveis_bb_geral.csv`) e commita em `data/raw/` |
+| **GitHub Actions** | valida, geocodifica, publica, gera páginas SEO/sitemap e commita `public/`; se o Pi não enviou, tenta coletar as duas fontes |
 
-O pipeline do Actions continua tentando baixar a Caixa. Se o arquivo que veio
-do Pi for mais novo, o guard de `download_caixa()` **não sobrescreve** e apenas
-registra `download_ignorado` no `ultima_atualizacao.json`. Se o Pi ficar 3 dias
-sem enviar, o `checar_fontes.py` marca `dados desatualizados` e o alerta dispara.
+O script roda as duas fontes por padrão. Para rodar só uma:
+
+```bash
+FONTES="caixa" scripts/coletar_local.sh
+FONTES="bb"    scripts/coletar_local.sh
+```
+
+O pipeline do Actions continua tentando baixar as duas fontes. Se o arquivo
+que veio do Pi for mais novo, o guard de `download_caixa()` **não sobrescreve** e
+apenas registra `download_ignorado` no `ultima_atualizacao.json`.
+
+No BB não existe "Data de geração" no CSV, então a regra é outra: se o coletor
+do Actions **falha**, o arquivo do Pi é preservado; se ele **consegue** coletar,
+os dados são atuais por definição e podem substituir. Para não alarmar à toa, o
+`checar_fontes.py --fresh-hours 30` ignora a falha do Actions quando o CSV foi
+commitado pelo Pi nas últimas 30 h (checagem por `git log` do arquivo).
 
 ## 1. Requisitos
 
@@ -98,6 +110,9 @@ systemctl list-timers imovanta-caixa.timer
 ```
 
 - Roda às **05:30 BRT** (o Actions roda às 06:00 BRT; a folga evita disputa de push).
+- O BB é baixado num diretório temporário e só substitui o arquivo se tiver
+  pelo menos 70% das linhas da coleta anterior (evita publicar coleta parcial
+  quando o portal limita no meio).
 - `Persistent=true` recupera a execução perdida se faltar luz.
 - `journalctl -u imovanta-caixa.service -n 100 --no-pager` mostra o log.
 
@@ -120,7 +135,8 @@ falha — no Uptime Kuma, crie um monitor **Push** com intervalo de 24 h e
 | `download não gerou …` | botão/rótulo mudou na Caixa | abrir a página no navegador e conferir os textos |
 | `playwright: Executable doesn't exist` | Chromium não instalado | `.venv/bin/playwright install --with-deps chromium` |
 | `Permission denied (publickey)` no push | deploy key sem escrita | marcar *Allow write access* |
-| `push falhou` + conflito | Actions commitou ao mesmo tempo | rodar o timer mais cedo ou `git pull --rebase` |
+| `push falhou` + conflito | Actions commitou ao mesmo tempo | o script já tenta rebase 3×; conferir `journalctl` |
+| `BB: coleta suspeita` | portal limitou no meio | rodar de novo mais tarde; o arquivo anterior é mantido |
 
 ## 7. Desligar
 
