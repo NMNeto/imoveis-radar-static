@@ -15,12 +15,15 @@ from . import sitemap as sitemap_generator
 from .collect import CollectionContext, collect_all
 from .config import (
     DEFAULT_CHUNK_SIZE,
+    DEFAULT_COLLECTOR_ATTEMPTS,
+    DEFAULT_COLLECTOR_RETRY_DELAY,
     DEFAULT_COLLECTOR_TIMEOUT,
     DEFAULT_GEOCODE_INTERVAL,
     DEFAULT_GEOCODE_MAX,
     DEFAULT_HISTORY_DAYS,
     DEFAULT_HTTP_RETRIES,
     DEFAULT_HTTP_TIMEOUT,
+    DEFAULT_MAX_STALE_DAYS,
     DEFAULT_MIN_ROWS_RATIO,
     PROJECT_ROOT,
     SOURCE_FILES,
@@ -256,6 +259,24 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--collector-timeout", type=int, default=DEFAULT_COLLECTOR_TIMEOUT
     )
+    parser.add_argument(
+        "--collector-attempts",
+        type=int,
+        default=DEFAULT_COLLECTOR_ATTEMPTS,
+        help="quantas vezes cada coletor é executado antes de desistir",
+    )
+    parser.add_argument(
+        "--collector-retry-delay",
+        type=float,
+        default=DEFAULT_COLLECTOR_RETRY_DELAY,
+        help="segundos de espera entre tentativas do mesmo coletor",
+    )
+    parser.add_argument(
+        "--max-stale-days",
+        type=int,
+        default=DEFAULT_MAX_STALE_DAYS,
+        help="dias de atraso no CSV da fonte antes de sinalizar",
+    )
     parser.add_argument("--geocode-max", type=int, default=DEFAULT_GEOCODE_MAX)
     parser.add_argument(
         "--geocode-interval", type=float, default=DEFAULT_GEOCODE_INTERVAL
@@ -313,6 +334,9 @@ def _options_from_args(args) -> RunOptions:
         http_timeout=args.http_timeout,
         http_retries=args.http_retries,
         collector_timeout=args.collector_timeout,
+        collector_attempts=args.collector_attempts,
+        collector_retry_delay=args.collector_retry_delay,
+        max_stale_days=args.max_stale_days,
         geocode_max=args.geocode_max,
         geocode_interval=args.geocode_interval,
         history_days=args.history_days,

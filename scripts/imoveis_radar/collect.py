@@ -18,7 +18,7 @@ import sys
 import tempfile
 import time
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 import requests
@@ -32,7 +32,12 @@ from .config import (
     Paths,
     RunOptions,
 )
-from .csv_sources import SourceFile, read_source_rows, validate_source_csv
+from .csv_sources import (
+    SourceFile,
+    read_generation_date,
+    read_source_rows,
+    validate_source_csv,
+)
 from .safety import atomic_write_json, ensure_within
 
 logger = logging.getLogger(__name__)
@@ -111,6 +116,36 @@ def _now() -> str:
     return datetime.now().isoformat(timespec="seconds")
 
 
+def stale_days(generation_date: str | None, today: date | None = None) -> int | None:
+    """Dias entre a data de geração do CSV e hoje. ``None`` se desconhecida."""
+    if not generation_date:
+        return None
+    try:
+        generated = date.fromisoformat(str(generation_date)[:10])
+    except ValueError:
+        return None
+    return max(0, ((today or date.today()) - generated).days)
+
+
+def stale_details(generation_date: str | None, max_stale_days: int) -> dict:
+    """Detalhes sobre o atraso do CSV, sem mudar o status da fonte.
+
+    O status continua ``ok`` de propósito: os dados antigos são a melhor
+    versão disponível e precisam continuar sendo publicados.  O atraso fica
+    registrado em ``stale_days``/``desatualizado`` para o alerta.
+    """
+    days = stale_days(generation_date)
+    if days is None:
+        return {}
+    if days <= max_stale_days:
+        return {"stale_days": days}
+    return {
+        "stale_days": days,
+        "desatualizado": True,
+        "aviso": f"CSV gerado há {days} dias (limite de {max_stale_days})",
+    }
+
+
 def _previous_rows(path: Path) -> int:
     if not path.exists():
         return 0
@@ -129,6 +164,17 @@ def _write_source_status(paths: Paths, statuses: dict[str, dict]) -> None:
         atomic_write_json(paths.logs / "status-fontes.json", payload, paths.data)
     except Exception as exc:  # status nunca derruba a atualização
         logger.warning("Não foi possível gravar status das fontes: %s", exc)
+
+
+def _mais_recente(novo: "CollectedSource", atual: "CollectedSource") -> bool:
+    """O arquivo novo só substitui o atual se tiver geração mais nova."""
+    if not novo.ok:
+        return False
+    novo_gen = novo.details.get("generation_date")
+    atual_gen = atual.details.get("generation_date")
+    if not atual.ok or not atual_gen:
+        return True
+    return bool(novo_gen) and novo_gen > atual_gen
 
 
 def _validate(
@@ -191,6 +237,29 @@ def download_caixa(
                 handle.flush()
                 os.fsync(handle.fileno())
             source_file = _validate(temp_csv, "caixa", options, previous_rows)
+            geracao_atual = read_generation_date(target) if target.exists() else None
+            nova = source_file.generation_date
+            if persist and geracao_atual and nova and nova < geracao_atual:
+                logger.warning(
+                    "Caixa: download de %s é mais antigo que o arquivo local (%s); mantendo o local.",
+                    nova,
+                    geracao_atual,
+                )
+                status.status = "ok"
+                status.rows = previous_rows
+                status.path = target
+                status.last_success = _now()
+                status.last_error = None
+                status.details.update(
+                    {
+                        "generation_date": geracao_atual,
+                        "bytes": target.stat().st_size,
+                        "url": CAIXA_URL,
+                        "download_ignorado": nova,
+                        **stale_details(geracao_atual, options.max_stale_days),
+                    }
+                )
+                break
             if persist:
                 target.parent.mkdir(parents=True, exist_ok=True)
                 os.replace(temp_csv, target)
@@ -208,8 +277,13 @@ def download_caixa(
                     "bytes": len(content),
                     "url": CAIXA_URL,
                     "generation_date": source_file.generation_date,
+                    **stale_details(
+                        source_file.generation_date, options.max_stale_days
+                    ),
                 }
             )
+            if status.details.get("desatualizado"):
+                logger.warning("Caixa: %s", status.details["aviso"])
             logger.info("Caixa: %s imóveis baixados e validados.", status.rows)
             break
         except Exception as exc:
@@ -231,6 +305,34 @@ def download_caixa(
 
 
 def run_collector(
+    source_id: str,
+    paths: Paths,
+    options: RunOptions,
+    context: CollectionContext,
+    persist: bool,
+) -> CollectedSource:
+    """Executa o coletor com novas tentativas antes de desistir da fonte."""
+    attempts = max(1, int(options.collector_attempts))
+    delay = max(0.0, float(options.collector_retry_delay))
+    status = _run_collector_once(source_id, paths, options, context, persist)
+    attempt = 1
+    while not status.ok and attempt < attempts:
+        attempt += 1
+        logger.warning(
+            "%s: tentativa %s/%s falhou (%s); repetindo em %.0fs…",
+            source_id,
+            attempt - 1,
+            attempts,
+            status.last_error,
+            delay,
+        )
+        if delay:
+            time.sleep(delay)
+        status = _run_collector_once(source_id, paths, options, context, persist)
+    return status
+
+
+def _run_collector_once(
     source_id: str,
     paths: Paths,
     options: RunOptions,
@@ -263,6 +365,7 @@ def run_collector(
             "SOURCE_OUTPUT_DIR": str(work_dir),
             "SOURCE_DATE_PREFIX": "",
             "SOURCE_CSV_ONLY": "1",
+            "SOURCE_PREVIOUS_CSV": str(target) if target.exists() else "",
             "PYTHONUNBUFFERED": "1",
         }
     )
@@ -299,23 +402,41 @@ def run_collector(
             if candidates:
                 csv_path = candidates[0]
         source_file = _validate(csv_path, source_id, options, previous_rows)
-        if persist:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            os.replace(csv_path, target)
+        geracao = source_file.generation_date
+        geracao_atual = read_generation_date(target) if target.exists() else None
+        if persist and geracao_atual and geracao and geracao < geracao_atual:
+            logger.warning(
+                "%s: coletor trouxe CSV de %s, mais antigo que o atual (%s); mantendo o atual.",
+                source_id,
+                geracao,
+                geracao_atual,
+            )
             status.path = target
-            status.persisted = True
+            status.rows = _previous_rows(target)
+            status.persisted = False
+            status.details["download_ignorado"] = geracao
+            geracao = geracao_atual
         else:
-            status.path = csv_path
+            if persist:
+                target.parent.mkdir(parents=True, exist_ok=True)
+                os.replace(csv_path, target)
+                status.path = target
+                status.persisted = True
+            else:
+                status.path = csv_path
+            status.rows = source_file.rows
         status.status = "ok"
-        status.rows = source_file.rows
         status.last_success = _now()
         status.last_error = None
         status.details.update(
             {
-                "generation_date": source_file.generation_date,
+                "generation_date": geracao,
                 "log": log_path.name,
+                **stale_details(geracao, options.max_stale_days),
             }
         )
+        if status.details.get("desatualizado"):
+            logger.warning("%s: %s", source_id, status.details["aviso"])
         logger.info("%s: %s imóveis coletados e validados.", source_id, status.rows)
     except subprocess.TimeoutExpired:
         status.last_error = f"coletor excedeu {options.collector_timeout}s"
@@ -357,7 +478,12 @@ def collect_all(
                     previous_rows=source_file.rows,
                     last_success=source_file.generation_date,
                     persisted=False,
-                    details={"modo": "dados existentes"},
+                    details={
+                        "modo": "dados existentes",
+                        **stale_details(
+                            source_file.generation_date, options.max_stale_days
+                        ),
+                    },
                 )
                 logger.info("%s: usando dados existentes (%s linhas).", source_id, source_file.rows)
             except Exception as exc:
@@ -373,6 +499,22 @@ def collect_all(
 
         if source_id == "caixa":
             status = download_caixa(paths, options, context, persist)
+            if not status.ok or status.details.get("desatualizado"):
+                motivo = (
+                    "CSV direto indisponível"
+                    if not status.ok
+                    else "CSV direto desatualizado"
+                )
+                logger.warning("Caixa: %s; tentando o fluxo da tela de download…", motivo)
+                alternativo = _run_collector_once(
+                    source_id, paths, options, context, persist
+                )
+                if _mais_recente(alternativo, status):
+                    status = alternativo
+                else:
+                    logger.warning(
+                        "Caixa: fluxo alternativo não trouxe arquivo mais novo; mantendo o anterior."
+                    )
         else:
             status = run_collector(source_id, paths, options, context, persist)
         statuses[source_id] = status

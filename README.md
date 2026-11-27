@@ -75,6 +75,9 @@ na sua máquina.
 │   ├── gerar_sitemap.py        # gera public/sitemap.xml
 │   ├── verificar_seo.py        # auditoria rápida de SEO (local ou produção)
 │   ├── verificar_redirect.py   # confere o 301 de www para o apex
+│   ├── checar_fontes.py        # falha quando uma fonte fica sem dados novos
+│   ├── enviar_alerta_email.py  # e-mail de alerta da atualização automática
+│   ├── coletar_local.sh        # coleta da Caixa no Raspberry Pi + push
 │   ├── gerar_og_image.py       # regera a imagem de compartilhamento (Pillow)
 │   └── imoveis_radar/          # núcleo (coleta, modelo, geo, publicação)
 ├── data/
@@ -328,6 +331,7 @@ Para outra frequência, edite o `cron`. O GitHub Actions sempre usa UTC.
 - [Arquitetura e decisões](docs/arquitetura.md)
 - [Dados, campos e atualização](docs/dados-e-atualizacao.md)
 - [Atualização automática](docs/atualizacao-automatica.md)
+- [Coleta local no Raspberry Pi](docs/coleta-local.md)
 - [Cloudflare Pages](docs/cloudflare-pages.md)
 - [Comparação visual](docs/comparacao-visual.md)
 - [Validação dos dados](docs/validacao-dados.md)

@@ -31,7 +31,7 @@ SOURCE_FILES = {
 
 #: Coletor Playwright de cada fonte (None = download HTTP simples).
 SOURCE_COLLECTORS = {
-    "caixa": None,
+    "caixa": "extrair_caixa.py",
     "bb": "extrair_bb.py",
     "santander": "extrair_santander.py",
     "itau": "extrair_itau.py",
@@ -57,6 +57,14 @@ DEFAULT_MIN_CAIXA_BYTES = int(os.environ.get("IMOVEIS_MIN_BYTES_CAIXA", "100000"
 DEFAULT_HTTP_TIMEOUT = int(os.environ.get("IMOVEIS_HTTP_TIMEOUT", "60"))
 DEFAULT_HTTP_RETRIES = int(os.environ.get("IMOVEIS_HTTP_RETRIES", "3"))
 DEFAULT_COLLECTOR_TIMEOUT = int(os.environ.get("IMOVEIS_COLLECTOR_TIMEOUT", "1800"))
+#: Quantas vezes um coletor Playwright é executado antes de desistir.
+DEFAULT_COLLECTOR_ATTEMPTS = int(os.environ.get("IMOVEIS_COLLECTOR_ATTEMPTS", "2"))
+#: Espera entre tentativas do mesmo coletor (segundos).
+DEFAULT_COLLECTOR_RETRY_DELAY = float(
+    os.environ.get("IMOVEIS_COLLECTOR_RETRY_DELAY", "120")
+)
+#: Dias entre a geração do CSV da fonte e hoje antes de sinalizar atraso.
+DEFAULT_MAX_STALE_DAYS = int(os.environ.get("IMOVEIS_MAX_STALE_DAYS", "3"))
 DEFAULT_GEOCODE_MAX = int(os.environ.get("IMOVEIS_GEOCODE_MAX", "200"))
 DEFAULT_GEOCODE_INTERVAL = float(os.environ.get("IMOVEIS_GEOCODE_INTERVAL", "1.5"))
 DEFAULT_HISTORY_DAYS = int(os.environ.get("IMOVEIS_HISTORY_DAYS", "365"))
@@ -175,6 +183,9 @@ class RunOptions:
     http_timeout: int = DEFAULT_HTTP_TIMEOUT
     http_retries: int = DEFAULT_HTTP_RETRIES
     collector_timeout: int = DEFAULT_COLLECTOR_TIMEOUT
+    collector_attempts: int = DEFAULT_COLLECTOR_ATTEMPTS
+    collector_retry_delay: float = DEFAULT_COLLECTOR_RETRY_DELAY
+    max_stale_days: int = DEFAULT_MAX_STALE_DAYS
     geocode_max: int = DEFAULT_GEOCODE_MAX
     geocode_interval: float = DEFAULT_GEOCODE_INTERVAL
     history_days: int = DEFAULT_HISTORY_DAYS
@@ -191,3 +202,5 @@ class RunOptions:
             raise ValueError("O tamanho do bloco deve ser >= 100")
         if not 0 < self.min_rows_ratio <= 1:
             raise ValueError("min_rows_ratio deve estar entre 0 e 1")
+        if self.collector_attempts < 1:
+            raise ValueError("collector_attempts deve ser >= 1")

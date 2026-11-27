@@ -34,11 +34,15 @@ edite o `cron`; exemplos:
 9. `git add data public`; se não houver diff, não commita.
 10. Commit `dados: atualização automática ...` e `git push`.
 11. Deploy hook opcional.
+12. `python scripts/checar_fontes.py` — falha o job se alguma fonte ficou sem
+    dados novos (ver seção 3).
+13. `python scripts/enviar_alerta_email.py` — roda só em falha (`if: failure()`)
+    e envia o e-mail com as fontes problemáticas.
 
 O job tem `timeout-minutes: 120` e `concurrency` para não rodar duas
 atualizações ao mesmo tempo.
 
-## 3. Falhas
+## 3. Falhas, novas tentativas e alertas
 
 - **Coleta de uma fonte falha:** o script mantém a versão anterior daquela
   fonte, registra o erro e continua. O workflow só falha se o script retornar
@@ -51,6 +55,87 @@ atualizações ao mesmo tempo.
 
 Nunca há commit de dados incompletos: a publicação só ocorre depois de
 validação de campos, tipos, IDs únicos, URLs e limites de tamanho.
+
+### Novas tentativas
+
+Cada coletor Playwright é executado até `--collector-attempts` vezes (padrão
+**2**), com `--collector-retry-delay` segundos entre elas (padrão **120**).
+O download da Caixa já repetia 3 vezes com backoff exponencial; agora os
+demais coletores têm o mesmo comportamento.
+
+```bash
+python scripts/atualizar_imoveis.py --collector-attempts 3 --collector-retry-delay 180
+```
+
+### CSV velho ("baixou igual ao de ontem")
+
+Um download pode dar 200 e ainda assim devolver o **mesmo arquivo** de dias
+atrás — foi o que aconteceu com a Caixa em novembro/2026 (CSV com data de
+geração de 19/11 servido por dias). Para isso existe o atraso calculado a
+partir de `Data de geração` do próprio CSV:
+
+- `stale_days` e `desatualizado: true` aparecem em
+  `public/data/ultima_atualizacao.json` por fonte;
+- acima de `--max-stale-days` (padrão **3**) o log avisa e o alerta dispara;
+- os dados antigos **continuam publicados** (status segue `ok`): é a melhor
+  versão disponível, e marcar a fonte como falha faria o site tratar todos os
+  imóveis como removidos.
+
+### Verificação e e-mail
+
+O passo `checar_fontes.py` roda depois do commit e falha o job quando:
+
+| Situação | Como é detectada |
+| --- | --- |
+| Coleta quebrada | `status: falhou` na fonte |
+| CSV parado | `desatualizado: true` ou `stale_days > 3` |
+| Publicação parada (opcional) | `--max-age-hours` (padrão 0 = desligado) |
+
+Com o job vermelho, o passo `enviar_alerta_email.py` manda o e-mail com a
+tabela de fontes, o erro de cada uma e o link do run. Não configure
+`--max-age-hours` sem necessidade: em dias sem mudança nos dados o
+`data_atualizacao` é preservado de propósito.
+
+Para silenciar uma fonte conhecida enquanto se investiga:
+
+```bash
+python scripts/checar_fontes.py --ignore bb
+```
+
+### Caixa: fluxo da tela de download
+
+O CSV direto (`/listaweb/Lista_imoveis_geral.csv`) está atrás do **Radware Bot
+Manager** e chegou a devolver o mesmo arquivo por 8 dias. Por isso a Caixa tem
+um segundo caminho:
+
+1. `download_caixa()` tenta o CSV direto (3 tentativas com backoff).
+2. Se falhar **ou** vier com `desatualizado: true`, o pipeline roda
+   `scripts/imoveis_radar/collectors/extrair_caixa.py`, que abre
+   `/sistema/download-lista.asp` num Chromium, escolhe **Todos**, clica em
+   **Próxima** e captura o download.
+3. O arquivo alternativo só substitui o atual se a `Data de geração` for mais
+   nova (`_mais_recente`). Caso contrário, mantém o anterior e o alerta aponta
+   o atraso.
+
+O fallback é opcional na prática: se o Chromium também for bloqueado, o
+pipeline segue com o CSV anterior e o e-mail avisa. Nada é apagado.
+
+### BB: menos requisições por dia
+
+O portal do BB responde `Nenhum Imóvel encontrado` quando recebe muitas
+requisições (rate limit temporário) — foi a causa das falhas de 18 a 26/11.
+Agora o coletor:
+
+- espera o `POST /catalogo` popular `#contagem` (`Encontramos N imóveis`), em
+  vez de dormir 4 s fixos;
+- repete a abertura até 6 vezes com esperas de 3/10/30/90/180 s: o portal
+  responde `Nenhum Imóvel encontrado` por 1–4 min quando limita o IP
+  (medido em 27/11/2026), então esperas curtas no começo e longas depois
+  atravessam o bloqueio sem perder tempo;
+- reaproveita o detalhe do CSV anterior quando preço e avaliação do cartão não
+  mudaram (o portal tem ~1.350 imóveis; antes eram 1.350 requisições de detalhe
+  por dia, agora só as novidades);
+- baixa detalhes com 2 workers e espera o conteúdo da página mudar ao paginar.
 
 ## 4. Commit e deploy
 
@@ -79,6 +164,28 @@ permissions:
 - `CLOUDFLARE_DEPLOY_HOOK_URL`: opcional.
 - Nenhuma credencial de Caixa/BB/Santander/Itaú é usada; a coleta é pública.
 - Nenhum token é colocado no código ou no frontend.
+
+### Secrets do alerta por e-mail
+
+| Secret | Exemplo | Obrigatório |
+| --- | --- | --- |
+| `SMTP_HOST` | `smtp.gmail.com` | sim |
+| `SMTP_PORT` | `587` | não (padrão 587) |
+| `SMTP_SECURITY` | `starttls` / `ssl` / `none` | não (padrão `starttls`) |
+| `SMTP_USER` | `alertas@seudominio.com` | sim |
+| `SMTP_PASS` | senha de app / API key | sim |
+| `ALERT_EMAIL_FROM` | `alertas@seudominio.com` | não (usa `SMTP_USER`) |
+| `ALERT_EMAIL_TO` | `voce@seudominio.com,outro@...` | sim |
+
+Sem `SMTP_HOST`/`ALERT_EMAIL_TO` o job falha normalmente e o script apenas
+avisa no log — nenhum e-mail é enviado e nada quebra.
+
+Teste local sem enviar:
+
+```bash
+python scripts/checar_fontes.py
+python scripts/enviar_alerta_email.py --dry-run
+```
 
 ## 6. Custo e limites
 

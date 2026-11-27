@@ -20,7 +20,6 @@ from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
-from playwright.async_api import async_playwright
 
 BASE_URL = "https://www.seuimovelbb.com.br"
 CATALOGO = BASE_URL + "/catalogo/categoria/urbanos"
@@ -28,8 +27,10 @@ CATALOGO = BASE_URL + "/catalogo/categoria/urbanos"
 DATE_PREFIX = os.environ.get("SOURCE_DATE_PREFIX", datetime.now().strftime("%Y.%m.%d_"))
 REPORTS_DIR = os.environ.get("SOURCE_OUTPUT_DIR", "reports")
 ARQUIVO_CSV = os.path.join(REPORTS_DIR, f"{DATE_PREFIX}imoveis_bb_geral.csv")
+#: CSV da coleta anterior, para reaproveitar detalhes de imóveis inalterados.
+ANTERIOR_CSV = os.environ.get("SOURCE_PREVIOUS_CSV", "")
 MAX_IMOVEIS = int(os.environ["MAX_IMOVEIS"]) if os.environ.get("MAX_IMOVEIS") else None
-DETALHE_WORKERS = 4
+DETALHE_WORKERS = 2
 
 CAMPOS = [
     "Nº do imóvel",
@@ -74,9 +75,45 @@ async def configurar_paginacao(page):
         await page.wait_for_timeout(400)
         await page.get_by_role("link", name="200", exact=True).click()
         await page.wait_for_timeout(3500)
+        await page.wait_for_selector(".card.carta", timeout=45000)
         logging.info("Paginação configurada para 200 imóveis por página.")
     except Exception as erro:
         logging.warning("Não foi possível configurar 200 por página: %s", erro)
+
+
+async def abrir_catalogo(page, tentativas=6):
+    """Abre a listagem e espera o filtro assíncrono popular os cartões."""
+    for tentativa in range(1, tentativas + 1):
+        await page.goto(CATALOGO, wait_until="domcontentloaded", timeout=60000)
+        try:
+            await page.wait_for_function(
+                "() => { const el = document.querySelector('#contagem');"
+                " return el && /Encontramos|Nenhum/i.test(el.innerText); }",
+                timeout=45000,
+            )
+        except Exception as erro:
+            logging.warning("Contagem não apareceu (tentativa %s): %s", tentativa, erro)
+        try:
+            texto = (await page.locator("#contagem").inner_text()).strip()
+        except Exception:
+            texto = ""
+        if "Encontramos" in texto:
+            logging.info("Catálogo aberto: %s", texto)
+            return True
+        logging.warning(
+            "Catálogo sem imóveis (tentativa %s/%s): %s",
+            tentativa,
+            tentativas,
+            texto or "sem contagem",
+        )
+        # O portal responde "Nenhum Imóvel" por 1-4 min quando limita o IP
+        # (medido em 27/11). As esperas crescem para atravessar o bloqueio.
+        if tentativa >= tentativas:
+            break
+        espera = {1: 3, 2: 10, 3: 30, 4: 90, 5: 180}.get(tentativa, 180)
+        logging.warning("Aguardando %ss antes de tentar de novo…", espera)
+        await page.wait_for_timeout(espera * 1000)
+    return False
 
 
 async def coletar_cards(page):
@@ -116,8 +153,17 @@ async def proxima_pagina(page):
         classes = await botao.locator("xpath=..").get_attribute("class") or ""
         if "disabled" in classes:
             return False
+        anterior = await page.locator(".card.carta a[href*='/imovel/id/']").first.get_attribute("href")
+        await page.wait_for_timeout(1200)
         await botao.click()
-        await page.wait_for_timeout(3000)
+        await page.wait_for_function(
+            """(anterior) => {
+                const link = document.querySelector(".card.carta a[href*='/imovel/id/']");
+                return link && link.getAttribute('href') !== anterior;
+            }""",
+            arg=anterior,
+            timeout=45000,
+        )
         return True
     except Exception as erro:
         logging.warning("Não foi possível avançar de página: %s", erro)
@@ -126,8 +172,8 @@ async def proxima_pagina(page):
 
 async def coletar_catalogo(page):
     todos = {}
-    await page.goto(CATALOGO, wait_until="domcontentloaded", timeout=60000)
-    await page.wait_for_timeout(4000)
+    if not await abrir_catalogo(page):
+        return todos
     await configurar_paginacao(page)
     pagina = 1
     while True:
@@ -287,6 +333,41 @@ def extrair_dados(texto, url, card=None, image_url=""):
     return dados
 
 
+def id_do_link(url):
+    return capturar(r"/imovel/id/(\d+)", url or "")
+
+
+def carregar_anteriores(caminho):
+    """Lê o CSV anterior e indexa por número do imóvel."""
+    if not caminho or not os.path.exists(caminho):
+        return {}
+    anteriores = {}
+    try:
+        with open(caminho, encoding="utf-8-sig", newline="") as arquivo:
+            for linha in csv.DictReader(arquivo, delimiter=";"):
+                chave = (linha.get("Nº do imóvel") or "").strip()
+                if chave:
+                    anteriores[chave] = {campo: (linha.get(campo) or "") for campo in CAMPOS}
+    except OSError as erro:
+        logging.warning("Não foi possível ler a coleta anterior: %s", erro)
+    return anteriores
+
+
+def pode_reaproveitar(anterior, card):
+    """Reaproveita o detalhe quando preço e avaliação do cartão não mudaram."""
+    if not anterior:
+        return False
+    if not anterior.get("Preço") or not anterior.get("Endereço"):
+        return False
+    preco = capturar(r"R\$\s*([\d.]+,\d{2})", (card or {}).get("valor", ""))
+    if preco and preco != anterior.get("Preço"):
+        return False
+    avaliacao = capturar(r"R\$\s*([\d.]+,\d{2})", (card or {}).get("avaliacao", ""))
+    if avaliacao and avaliacao != anterior.get("Valor de avaliação"):
+        return False
+    return True
+
+
 def salvar_csv(dados):
     directory = os.path.dirname(ARQUIVO_CSV) or "."
     os.makedirs(directory, exist_ok=True)
@@ -304,6 +385,9 @@ def salvar_csv(dados):
 
 
 async def coletar():
+    # Import tardio: os testes e o validador não precisam do Playwright instalado.
+    from playwright.async_api import async_playwright
+
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         page = await browser.new_page(locale="pt-BR")
@@ -326,22 +410,52 @@ def main():
         urls = urls[:MAX_IMOVEIS]
         logging.info("Limitando a coleta a %s imóveis (MAX_IMOVEIS).", MAX_IMOVEIS)
 
-    logging.info("Baixando detalhes de %s imóveis...", len(urls))
-    textos = baixar_detalhes(urls)
+    anteriores = carregar_anteriores(ANTERIOR_CSV)
+    resultados, a_baixar = [], []
+    for url in urls:
+        anterior = anteriores.get(id_do_link(url))
+        if pode_reaproveitar(anterior, cards[url]):
+            linha = dict(anterior)
+            linha["Link de acesso"] = url
+            resultados.append(linha)
+        else:
+            a_baixar.append(url)
+    logging.info(
+        "Detalhes reaproveitados: %s; para baixar: %s",
+        len(resultados),
+        len(a_baixar),
+    )
 
-    resultados = []
-    for indice, url in enumerate(urls, start=1):
+    textos = baixar_detalhes(a_baixar)
+    falhas = 0
+    for indice, url in enumerate(a_baixar, start=1):
         detalhe = textos.get(url) or {}
-        dados = extrair_dados(
-            detalhe.get("texto", ""),
-            url,
-            cards[url],
-            detalhe.get("imagem", ""),
+        if not detalhe.get("texto"):
+            anterior = anteriores.get(id_do_link(url))
+            if anterior:
+                linha = dict(anterior)
+                linha["Link de acesso"] = url
+                resultados.append(linha)
+            else:
+                falhas += 1
+                logging.warning("Detalhe indisponível e sem versão anterior: %s", url)
+            continue
+        resultados.append(
+            extrair_dados(
+                detalhe.get("texto", ""),
+                url,
+                cards[url],
+                detalhe.get("imagem", ""),
+            )
         )
-        resultados.append(dados)
-        if indice % 50 == 0 or indice == len(urls):
-            logging.info("Extraindo %s/%s", indice, len(urls))
+        if indice % 50 == 0 or indice == len(a_baixar):
+            logging.info("Extraindo %s/%s", indice, len(a_baixar))
             salvar_csv(resultados)
+
+    if falhas and falhas > max(2, len(a_baixar) * 0.2):
+        raise RuntimeError(
+            f"{falhas} de {len(a_baixar)} detalhes falharam; mantendo a coleta anterior"
+        )
 
     unicos = {}
     for item in resultados:
