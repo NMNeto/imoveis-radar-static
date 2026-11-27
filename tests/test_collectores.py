@@ -275,3 +275,18 @@ def test_coletor_da_caixa_aceita_candidato_mais_novo(tmp_path, monkeypatch):
     candidato.write_bytes(_csv_caixa("27/11/2026"))
     monkeypatch.setattr(extrair_caixa, "SAIDA", salvo)
     assert extrair_caixa._manter_mais_novo(candidato) is False
+
+
+def test_carregar_anteriores_indexa_tambem_pelo_id_da_url(tmp_path):
+    caminho = tmp_path / "imoveis_bb_geral.csv"
+    caminho.write_text(
+        "Nº do imóvel;UF;Cidade;Endereço;Preço;Link de acesso\n"
+        "97595;PI;José de Freitas;Rua Paulo Melo, 245;220.780,85;https://x/imovel/id/13727\n",
+        encoding="utf-8-sig",
+    )
+    anteriores = extrair_bb.carregar_anteriores(str(caminho))
+    assert anteriores["97595"]["Preço"] == "220.780,85"
+    assert anteriores["13727"]["Preço"] == "220.780,85"
+    assert extrair_bb.pode_reaproveitar(
+        anteriores["13727"], {"valor": "R$ 220.780,85", "avaliacao": ""}
+    )

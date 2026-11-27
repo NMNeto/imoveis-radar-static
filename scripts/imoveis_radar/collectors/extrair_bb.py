@@ -345,9 +345,15 @@ def carregar_anteriores(caminho):
     try:
         with open(caminho, encoding="utf-8-sig", newline="") as arquivo:
             for linha in csv.DictReader(arquivo, delimiter=";"):
+                registro = {campo: (linha.get(campo) or "") for campo in CAMPOS}
                 chave = (linha.get("Nº do imóvel") or "").strip()
                 if chave:
-                    anteriores[chave] = {campo: (linha.get(campo) or "") for campo in CAMPOS}
+                    anteriores[chave] = registro
+                # O catálogo identifica o imóvel pelo ID da URL, que é diferente
+                # do "Nº do imóvel" do Banco do Brasil.  Indexa os dois.
+                chave_link = id_do_link(linha.get("Link de acesso") or "")
+                if chave_link:
+                    anteriores.setdefault(chave_link, registro)
     except OSError as erro:
         logging.warning("Não foi possível ler a coleta anterior: %s", erro)
     return anteriores
