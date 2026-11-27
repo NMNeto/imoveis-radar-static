@@ -9,6 +9,7 @@ htmlcov/
 
 # Logs e estado local do atualizador (não publicados)
 data/logs/
+reports/
 data/.atualizacao.lock
 data/raw/*/.tmp-*
 data/history/.tmp-*
