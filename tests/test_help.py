@@ -24,6 +24,10 @@ def test_help_markup_and_content():
         "Mapa e localização",
         "Download do CSV",
         "Tentar novamente",
+        "uma vez por dia",
+        "tira imóveis do portal ao longo do dia",
+        "não está mais disponível para venda",
+        "Atualizado",
     ):
         assert marker in html, marker
 
