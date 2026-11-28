@@ -1,1 +1,1 @@
-{"exclude_ids":["00000000"],"exclude_locations":[{"bairro":"BAIRRO EXEMPLO","cidade":"CIDADE EXEMPLO","endereco":"all"}],"market_values":{"00000000":350000.0},"settings":{"custo_fixo":30.0,"custo_fixo_modo":"percentual","fator_preco":1.05,"taxa_venda":0.06}}
+{"exclude_ids":["00000000","1444407181205"],"exclude_locations":[{"bairro":"BAIRRO EXEMPLO","cidade":"CIDADE EXEMPLO","endereco":"all"}],"market_values":{"00000000":350000.0},"settings":{"custo_fixo":30.0,"custo_fixo_modo":"percentual","fator_preco":1.05,"taxa_venda":0.06}}
